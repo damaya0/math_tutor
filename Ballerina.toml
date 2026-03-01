@@ -1,0 +1,8 @@
+[package]
+org = "danniles"
+name = "MathTutor"
+version = "0.1.0"
+title = "MathTutor"
+
+[build-options]
+observabilityIncluded = true
