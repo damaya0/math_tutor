@@ -5,7 +5,6 @@
   "threads": [
     {
       "id": "chained-pronoun-resolution-test",
-      "name": "chained-pronoun-resolution-test",
       "description": "Evaluates the ability to resolve contextual references like \"that\" or \"first result\" across a sequence of operations.",
       "traces": [
         {
@@ -739,7 +738,6 @@
     },
     {
       "id": "multi-turn-context-test",
-      "name": "multi-turn-context-test",
       "description": "Verifies that the agent correctly tracks and uses previous calculation results in subsequent turns.",
       "traces": [
         {
@@ -1177,7 +1175,6 @@
     },
     {
       "id": "correction-multi-turn-test",
-      "name": "correction-multi-turn-test",
       "description": "Assesses how well the agent handles mid-stream user corrections to switch from one tool to another.",
       "traces": [
         {
@@ -1615,7 +1612,6 @@
     },
     {
       "id": "variable-recall-test",
-      "name": "variable-recall-test",
       "description": "",
       "traces": [
         {

@@ -2,7 +2,7 @@ import ballerina/ai;
 import ballerina/test;
 
 isolated function loadEvalsetData1() returns map<[ai:ConversationThread]>|error {
-    return check ai:loadConversationThreads("evalsets/math-tutor.evalset.json");
+    return check ai:loadConversationThreads("tests/evalsets/math-tutor.evalset.json");
 }
 
 @test:Config {
@@ -58,7 +58,7 @@ Output ONLY the integer number (1, 2, 3, 4, or 5). Do not include any other text
 final ai:Wso2ModelProvider judgeModel = check ai:getDefaultModelProvider();
 
 isolated function loadEvalsetData() returns map<[ai:ConversationThread]>|error {
-    return ai:loadConversationThreads("evalsets/math-tutor.evalset.json");
+    return ai:loadConversationThreads("tests/evalsets/math-tutor.evalset.json");
 }
 
 @test:Config {

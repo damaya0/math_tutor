@@ -350,9 +350,6 @@ version = "2.8.0"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"}
 ]
-modules = [
-	{org = "ballerina", packageName = "time", moduleName = "time"}
-]
 
 [[package]]
 org = "ballerina"
@@ -410,20 +407,6 @@ modules = [
 ]
 
 [[package]]
-org = "ballerinax"
-name = "mongodb"
-version = "5.2.3"
-dependencies = [
-	{org = "ballerina", name = "crypto"},
-	{org = "ballerina", name = "jballerina.java"},
-	{org = "ballerina", name = "log"},
-	{org = "ballerina", name = "time"}
-]
-modules = [
-	{org = "ballerinax", packageName = "mongodb", moduleName = "mongodb"}
-]
-
-[[package]]
 org = "danniles"
 name = "MathTutor"
 version = "0.1.0"
@@ -431,10 +414,8 @@ dependencies = [
 	{org = "ballerina", name = "ai"},
 	{org = "ballerina", name = "http"},
 	{org = "ballerina", name = "test"},
-	{org = "ballerina", name = "time"},
 	{org = "ballerinai", name = "observe"},
-	{org = "ballerinax", name = "idetraceprovider"},
-	{org = "ballerinax", name = "mongodb"}
+	{org = "ballerinax", name = "idetraceprovider"}
 ]
 modules = [
 	{org = "danniles", packageName = "MathTutor", moduleName = "MathTutor"}
