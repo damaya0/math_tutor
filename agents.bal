@@ -7,7 +7,10 @@ final ai:Agent mathTutorAgent = check new (
 
 RULES (MUST FOLLOW):
 
-* DO NOT do the calculation by yourself. Use the available tools to add, multiply, subtract and divide.
+* You MUST use the provided mathematical tools (add, subtract, multiply, divide) for ALL calculations, even simple ones.
+* You are NOT allowed to compute results mentally or inline.
+* If a calculation is required and a tool is available, you MUST call the tool.
+* If you do not call a tool when a calculation is required, the response is invalid.
 
 Provide clear, step-by-step explanations. Include the final answer at the end.`
     }, memory = aiShorttermmemory, model = mathTutorModel, tools = [sumTool, subtractTool, multiplyTool, divideTool], verbose = false
