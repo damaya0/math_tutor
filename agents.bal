@@ -17,43 +17,55 @@ Provide clear, step-by-step explanations. Include the final answer at the end.`
 );
 
 # Calculates the sum of two numbers
+#
+# + num1 - The first number
+# + num2 - The second number
+# + return - The sum of num1 and num2
 @ai:AgentTool
 @display {label: "", iconPath: ""}
 isolated function sumTool(float num1, float num2) returns float {
-    float result = sum(num1, num2);
-    return result;
+    return num1 + num2;
 }
 
 # Calculates the difference of two numbers
+#
+# + num1 - The first number
+# + num2 - The second number
+# + return - The difference of num1 and num2
 @ai:AgentTool
 @display {label: "", iconPath: ""}
 isolated function subtractTool(float num1, float num2) returns float {
-    float result = subtract(num1, num2);
-    return result;
+    return num1 - num2;
 }
 
 # Calculates the product of two numbers
+#
+# + num1 - The first number
+# + num2 - The second number
+# + return - The product of num1 and num2
 @ai:AgentTool
 @display {label: "", iconPath: ""}
 isolated function multiplyTool(float num1, float num2) returns float {
-    float result = multiply(num1, num2);
-    return result;
+    return num1 * num2;
 }
 
 # Calculates the division of two numbers
 # Handles division by zero
 # If num2 is zero, returns 0
 # Otherwise, returns the result of the division
+#
+# + num1 - The dividend (numerator)
+# + num2 - The divisor (denominator)
+# + return - The quotient of num1 divided by num2, or 0 if num2 is zero
 @ai:AgentTool
 @display {label: "", iconPath: ""}
 isolated function divideTool(float num1, float num2) returns float {
     if (num2 == 0.0) {
         return 0.0;
     }
-    float result = divide(num1, num2);
-    return result;
+    return num1 / num2;
 }
 
 final ai:ShortTermMemory aiShorttermmemory = check new (aiInmemoryshorttermmemorystore);
 
-final ai:InMemoryShortTermMemoryStore aiInmemoryshorttermmemorystore = check new (10);
+final ai:InMemoryShortTermMemoryStore aiInmemoryshorttermmemorystore = check new (20);
