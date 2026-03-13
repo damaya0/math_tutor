@@ -58,7 +58,7 @@ Output ONLY the integer number (1, 2, 3, 4, or 5). Do not include any other text
 final ai:Wso2ModelProvider judgeModel = check ai:getDefaultModelProvider();
 
 isolated function loadEvalsetData() returns map<[ai:ConversationThread]>|error {
-    return ai:loadConversationThreads("tests/evalsets/math-tutor.evalset.json");
+    return ai:loadConversationThreads("tests/resources/evalsets/math-tutor.evalset.json");
 }
 
 @test:Config {
