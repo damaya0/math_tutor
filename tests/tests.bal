@@ -2,7 +2,7 @@ import ballerina/ai;
 import ballerina/test;
 
 isolated function loadEvalsetData1() returns map<[ai:ConversationThread]>|error {
-    return check ai:loadConversationThreads("tests/evalsets/math-tutor.evalset.json");
+    return check ai:loadConversationThreads("tests/resources/evalsets/math-tutor.evalset.json");
 }
 
 @test:Config {
