@@ -4,7 +4,7 @@
   "description": "Session export",
   "threads": [
     {
-      "id": "thread-1c603f79",
+      "id": "variable-assignment-test",
       "description": "",
       "traces": [
         {
