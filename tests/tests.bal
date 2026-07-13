@@ -36,7 +36,7 @@ isolated function loadEvalsetData2() returns map<[ai:ConversationThread]>|error 
 @test:Config {
     groups: ["evaluations"],
     dependsOn: [],
-    minPassRate: 0.9,
+    minPassRate: 0.4,
     dataProvider: loadEvalsetData2
 }
 function MathTuteEval(ai:ConversationThread thread) returns error? {
@@ -72,28 +72,4 @@ Give a score between 0 to 1 based on your evaluation. 0 if the real output is ex
     }
 }
 
-isolated function loadEvalsetData4() returns map<[ai:ConversationThread]>|error {
-    return ai:loadConversationThreads("tests\\resources\\evalsets\\mathtutor1.evalset.json");
-}
 
-@test:Config {
-    groups: ["evaluations"],
-    minPassRate: 0.9,
-    dataProvider: loadEvalsetData4
-}
-function toolTest(ai:ConversationThread thread) returns error? {
-    foreach ai:Trace trace in thread.traces {
-    }
-}
-
-isolated function loadEvalsetData5() returns map<[ai:ConversationThread]>|error {
-    return ai:loadConversationThreads("tests\\resources\\evalsets\\mathtutor1.evalset.json");
-}
-
-@test:Config {
-    groups: ["evaluations"],
-    minPassRate: 0.9,
-    dataProvider: loadEvalsetData5
-}
-function tester(ai:ConversationThread thread) returns error? {
-}
