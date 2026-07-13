@@ -47,8 +47,10 @@ function MathTuteEval(ai:ConversationThread thread) returns error? {
 }
 
 isolated function loadEvalsetData3() returns map<[ai:ConversationThread]>|error {
-    return ai:loadConversationThreads("tests\resources\evalsets\mathtutor1.evalset.json");
+    return ai:loadConversationThreads("tests\\resources\\evalsets\\mathtutor1.evalset.json");
 }
+
+final ai:Wso2ModelProvider aiWso2modelprovider = check ai:getDefaultModelProvider();
 
 @test:Config {
     groups: ["evaluations"],
@@ -57,4 +59,41 @@ isolated function loadEvalsetData3() returns map<[ai:ConversationThread]>|error 
     dataProvider: loadEvalsetData3
 }
 function LLMJudge(ai:ConversationThread thread) returns error? {
+    float passingScore = 0.8;
+    foreach ai:Trace trace in thread.traces {
+        ai:Trace actualTrace = check mathTutorAgent.run(trace.userMessage.content.toString(), thread.id);
+        float td = check aiWso2modelprovider->generate(`you are a LLM that judges an agent. Be very harsh. Penalize any differences between the ideal output and real ouput. 
+
+Here is the ideal output - ${check trace.output}
+Here is the real output -  ${check actualTrace.output}
+
+Give a score between 0 to 1 based on your evaluation. 0 if the real output is extremely different, and 1 if the output is exactly similar. Don't give 1 even if even a single character differs from the ideal answer.`);
+        test:assertEquals(true, td >= passingScore);
+    }
+}
+
+isolated function loadEvalsetData4() returns map<[ai:ConversationThread]>|error {
+    return ai:loadConversationThreads("tests\\resources\\evalsets\\mathtutor1.evalset.json");
+}
+
+@test:Config {
+    groups: ["evaluations"],
+    minPassRate: 0.9,
+    dataProvider: loadEvalsetData4
+}
+function toolTest(ai:ConversationThread thread) returns error? {
+    foreach ai:Trace trace in thread.traces {
+    }
+}
+
+isolated function loadEvalsetData5() returns map<[ai:ConversationThread]>|error {
+    return ai:loadConversationThreads("tests\\resources\\evalsets\\mathtutor1.evalset.json");
+}
+
+@test:Config {
+    groups: ["evaluations"],
+    minPassRate: 0.9,
+    dataProvider: loadEvalsetData5
+}
+function tester(ai:ConversationThread thread) returns error? {
 }
