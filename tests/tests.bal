@@ -72,4 +72,21 @@ Give a score between 0 to 1 based on your evaluation. 0 if the real output is ex
     }
 }
 
+isolated function loadEvalsetData4() returns map<[ai:ConversationThread]>|error {
+    return ai:loadConversationThreads("tests/resources/evalsets/mathtutor1.evalset.json");
+}
+
+@test:Config {
+    groups: ["evaluations"],
+    dependsOn: [],
+    minPassRate: 0.8,
+    dataProvider: loadEvalsetData4
+}
+function CompareLength(ai:ConversationThread thread) returns error? {
+    foreach ai:Trace trace in thread.traces {
+        ai:Trace actualTrace = check mathTutorAgent.run(trace.userMessage.content.toString(), "thread.id");
+        ai:ChatAssistantMessage output = check actualTrace.output;
+        test:assertTrue(output.content.toString().length() > 1 && output.content.toString().length() < 10000);
+    }
+}
 
