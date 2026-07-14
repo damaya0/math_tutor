@@ -2415,17 +2415,17 @@
               }
             },
             {
-              "name": "sumTool",
-              "arguments": {
-                "num1": 1,
-                "num2": 0.75
-              }
-            },
-            {
               "name": "subtractTool",
               "arguments": {
                 "num1": 5,
                 "num2": 4
+              }
+            },
+            {
+              "name": "sumTool",
+              "arguments": {
+                "num1": 1,
+                "num2": 0.75
               }
             }
           ],
