@@ -432,6 +432,7 @@ dependencies = [
 	{org = "ballerinax", name = "idetraceprovider"}
 ]
 modules = [
-	{org = "danniles", packageName = "MathTutor", moduleName = "MathTutor"}
+	{org = "danniles", packageName = "MathTutor", moduleName = "MathTutor"},
+	{org = "danniles", packageName = "MathTutor", moduleName = "MathTutor.eval"}
 ]
 
