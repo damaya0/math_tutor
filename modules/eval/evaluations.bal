@@ -1,56 +1,40 @@
 import ballerina/ai;
-
-# Default session ID used when evaluating standalone user queries.
-const string DEFAULT_EVAL_SESSION = "eval-session";
+import ballerina/uuid;
 
 // ***** Rule-based evaluations *****
 
-# Checks that the length of every agent response for the thread falls within the
-# given bounds (inclusive).
+# Checks that agent response lengths fall within the given bounds (inclusive).
+#
+# Accepts either a conversation thread loaded from an eval set (every trace is
+# replayed into the thread's session and checked) or a single user query (run in
+# a fresh, randomly generated session with no leftover memory).
 #
 # + targetAgent - The agent under evaluation
-# + thread - The conversation thread loaded from an eval set
+# + queries - The eval set conversation thread, or a single user query
 # + minLength - The minimum accepted response length (inclusive)
 # + maxLength - The maximum accepted response length (inclusive)
-# + return - `()` if every trace passes, or an error describing the first failure
+# + return - `()` if every checked response passes, or an error describing the first failure
 @EvalTemplate {
-    label: "Length Compliance (Eval Set)",
-    description: "Checks that every agent response length stays within the configured bounds",
-    kind: RULE_BASED,
-    needsEvalset: true
-}
-public isolated function assertLengthCompliance(ai:Agent targetAgent, ai:ConversationThread thread,
-        int minLength = 1, int maxLength = 100000) returns error? {
-    foreach ai:Trace expectedTrace in thread.traces {
-        string userQuery = ai:getUserQuery(trace = expectedTrace);
-        string actualResponse = check getAgentResponse(targetAgent = targetAgent, userQuery = userQuery,
-                sessionId = thread.id);
-        check checkLength(userQuery = userQuery, actualResponse = actualResponse,
-                minLength = minLength, maxLength = maxLength);
-    }
-}
-
-# Checks that the length of the agent response for a standalone query falls within
-# the given bounds (inclusive).
-#
-# + targetAgent - The agent under evaluation
-# + userQuery - The query to send to the agent
-# + minLength - The minimum accepted response length (inclusive)
-# + maxLength - The maximum accepted response length (inclusive)
-# + sessionId - The memory session ID to run the agent with
-# + return - `()` on success, or an error describing the failure
-@EvalTemplate {
-    label: "Length Compliance (Custom Query)",
-    description: "Checks that the agent response length for a single query stays within the configured bounds",
+    label: "Length Compliance",
+    description: "Checks that agent response lengths stay within the configured bounds",
     kind: RULE_BASED,
     needsEvalset: false
 }
-public isolated function assertLengthComplianceForQuery(ai:Agent targetAgent, string userQuery,
-        int minLength = 1, int maxLength = 100000, string sessionId = DEFAULT_EVAL_SESSION) returns error? {
-    string actualResponse = check getAgentResponse(targetAgent = targetAgent, userQuery = userQuery,
-            sessionId = sessionId);
-    check checkLength(userQuery = userQuery, actualResponse = actualResponse,
-            minLength = minLength, maxLength = maxLength);
+public isolated function assertLengthCompliance(ai:Agent targetAgent, ai:ConversationThread|string queries,
+        int minLength = 1, int maxLength = 100000) returns error? {
+    if queries is string {
+        string actualResponse = check getAgentResponse(targetAgent = targetAgent, userQuery = queries,
+                sessionId = uuid:createType4AsString());
+        return checkLength(userQuery = queries, actualResponse = actualResponse,
+                minLength = minLength, maxLength = maxLength);
+    }
+    foreach ai:Trace expectedTrace in queries.traces {
+        string userQuery = ai:getUserQuery(trace = expectedTrace);
+        string actualResponse = check getAgentResponse(targetAgent = targetAgent, userQuery = userQuery,
+                sessionId = queries.id);
+        check checkLength(userQuery = userQuery, actualResponse = actualResponse,
+                minLength = minLength, maxLength = maxLength);
+    }
 }
 
 # Checks that the agent invokes the same tools, in the same order and with the same
@@ -75,6 +59,35 @@ public isolated function evaluateToolTrajectory(ai:Agent targetAgent, ai:Convers
         ai:FunctionCall[] actualToolCalls = actualTrace.toolCalls ?: [];
         if !matchToolCalls(expectedToolCalls = expectedToolCalls, actualToolCalls = actualToolCalls) {
             return error(string `[tool-trajectory] query "${userQuery}": expected tool calls ${describeToolCalls(toolCalls = expectedToolCalls)} but got ${describeToolCalls(toolCalls = actualToolCalls)}`);
+        }
+    }
+}
+
+# Checks that every agent response is character-for-character identical to the
+# expected response recorded in the eval set. A single differing character —
+# including whitespace, punctuation, or formatting — fails the thread.
+#
+# + targetAgent - The agent under evaluation
+# + thread - The conversation thread loaded from an eval set
+# + return - `()` if every trace matches exactly, or an error describing the first mismatch
+@EvalTemplate {
+    label: "Exact Match",
+    description: "Checks that each agent response is character-for-character identical to the expected response in the eval set",
+    kind: RULE_BASED,
+    needsEvalset: true
+}
+public isolated function assertExactMatch(ai:Agent targetAgent, ai:ConversationThread thread)
+        returns error? {
+    foreach ai:Trace expectedTrace in thread.traces {
+        string userQuery = ai:getUserQuery(trace = expectedTrace);
+        ai:ChatAssistantMessage expectedOutput = check expectedTrace.output;
+        string expectedResponse = expectedOutput.content ?: "";
+        string actualResponse = check getAgentResponse(targetAgent = targetAgent, userQuery = userQuery,
+                sessionId = thread.id);
+        if actualResponse != expectedResponse {
+            int mismatchIndex = findFirstMismatch(expectedResponse = expectedResponse,
+                    actualResponse = actualResponse);
+            return error(string `[exact-match] query "${userQuery}": responses differ at character index ${mismatchIndex} (expected lengths ${expectedResponse.length()}, actual ${actualResponse.length()}); expected "…${excerptAround(text = expectedResponse, mismatchIndex = mismatchIndex)}…" but got "…${excerptAround(text = actualResponse, mismatchIndex = mismatchIndex)}…"`);
         }
     }
 }
@@ -126,47 +139,39 @@ public isolated function evaluateSemanticSimilarity(ai:Agent targetAgent, ai:Con
     }
 }
 
-# Uses an LLM judge to check that the factual information in every agent response
-# for the thread is correct and reliable.
+# Uses an LLM judge to check that the factual information in agent responses is
+# correct and reliable.
+#
+# Accepts either a conversation thread loaded from an eval set (every trace is
+# replayed into the thread's session and judged) or a single user query (run in
+# a fresh, randomly generated session with no leftover memory).
 #
 # + targetAgent - The agent under evaluation
-# + thread - The conversation thread loaded from an eval set
+# + queries - The eval set conversation thread, or a single user query
 # + judgeModel - The model provider used as the LLM judge
 # + judgeScoreThreshold - The minimum judge score (in [0.0, 1.0]) required to pass
-# + return - `()` if every trace passes, or an error describing the first failure
+# + return - `()` if every judged response passes, or an error describing the first failure
 @EvalTemplate {
-    label: "Output Accuracy (Eval Set)",
-    description: "Uses an LLM judge to check the factual correctness of each agent response in the eval set",
-    kind: LLM_JUDGE,
-    needsEvalset: true
-}
-public isolated function evaluateOutputAccuracy(ai:Agent targetAgent, ai:ConversationThread thread,
-        ai:ModelProvider judgeModel, float judgeScoreThreshold = 0.8) returns error? {
-    foreach ai:Trace expectedTrace in thread.traces {
-        string userQuery = ai:getUserQuery(trace = expectedTrace);
-        check evaluateOutputAccuracyForQuery(targetAgent = targetAgent, userQuery = userQuery,
-                judgeModel = judgeModel, judgeScoreThreshold = judgeScoreThreshold, sessionId = thread.id);
-    }
-}
-
-# Uses an LLM judge to check that the factual information in the agent response for
-# a standalone query is correct and reliable.
-#
-# + targetAgent - The agent under evaluation
-# + userQuery - The query to send to the agent
-# + judgeModel - The model provider used as the LLM judge
-# + judgeScoreThreshold - The minimum judge score (in [0.0, 1.0]) required to pass
-# + sessionId - The memory session ID to run the agent with
-# + return - `()` on success, or an error describing the failure
-@EvalTemplate {
-    label: "Output Accuracy (Custom Query)",
-    description: "Uses an LLM judge to check the factual correctness of the agent response to a single query",
+    label: "Output Accuracy",
+    description: "Uses an LLM judge to check the factual correctness of agent responses",
     kind: LLM_JUDGE,
     needsEvalset: false
 }
-public isolated function evaluateOutputAccuracyForQuery(ai:Agent targetAgent, string userQuery,
-        ai:ModelProvider judgeModel, float judgeScoreThreshold = 0.8, string sessionId = DEFAULT_EVAL_SESSION)
-        returns error? {
+public isolated function evaluateOutputAccuracy(ai:Agent targetAgent, ai:ConversationThread|string queries,
+        ai:ModelProvider judgeModel, float judgeScoreThreshold = 0.8) returns error? {
+    if queries is string {
+        return checkQueryAccuracy(targetAgent = targetAgent, userQuery = queries, judgeModel = judgeModel,
+                judgeScoreThreshold = judgeScoreThreshold, sessionId = uuid:createType4AsString());
+    }
+    foreach ai:Trace expectedTrace in queries.traces {
+        string userQuery = ai:getUserQuery(trace = expectedTrace);
+        check checkQueryAccuracy(targetAgent = targetAgent, userQuery = userQuery, judgeModel = judgeModel,
+                judgeScoreThreshold = judgeScoreThreshold, sessionId = queries.id);
+    }
+}
+
+isolated function checkQueryAccuracy(ai:Agent targetAgent, string userQuery, ai:ModelProvider judgeModel,
+        float judgeScoreThreshold, string sessionId) returns error? {
     ai:Trace actualTrace = check targetAgent.run(query = userQuery, sessionId = sessionId);
     ai:ChatAssistantMessage actualOutput = check actualTrace.output;
     float evalScore = check judgeModel->generate(`You are an expert evaluator. Your sole criterion is ACCURACY: is the factual information in the response correct and reliable?
@@ -218,6 +223,22 @@ isolated function checkScore(string metricName, string userQuery, float evalScor
     if evalScore < passingScore {
         return error(string `[${metricName}] query "${userQuery}": judge score ${evalScore} is below the passing score ${passingScore}`);
     }
+}
+
+isolated function findFirstMismatch(string expectedResponse, string actualResponse) returns int {
+    int comparableLength = int:min(expectedResponse.length(), actualResponse.length());
+    foreach int charIndex in 0 ..< comparableLength {
+        if expectedResponse[charIndex] != actualResponse[charIndex] {
+            return charIndex;
+        }
+    }
+    return comparableLength;
+}
+
+isolated function excerptAround(string text, int mismatchIndex) returns string {
+    int windowStart = int:max(0, mismatchIndex - 20);
+    int windowEnd = int:min(text.length(), mismatchIndex + 20);
+    return text.substring(windowStart, windowEnd);
 }
 
 isolated function matchToolCalls(ai:FunctionCall[] expectedToolCalls, ai:FunctionCall[] actualToolCalls)

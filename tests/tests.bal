@@ -256,7 +256,7 @@ isolated function loadLibraryEvalset() returns map<[ai:ConversationThread]>|erro
     dataProvider: loadLibraryEvalset
 }
 function libLengthCompliance(ai:ConversationThread thread) returns error? {
-    check eval:assertLengthCompliance(targetAgent = mathTutorAgent, thread = thread,
+    check eval:assertLengthCompliance(targetAgent = mathTutorAgent, queries = thread,
             minLength = minResponseLength, maxLength = maxResponseLength);
 }
 
@@ -277,20 +277,32 @@ isolated function loadLibraryUserQueries() returns map<[string]>|error {
     dataProvider: loadLibraryUserQueries
 }
 function libQueryLengthCompliance(string userQuery) returns error? {
-    check eval:assertLengthComplianceForQuery(targetAgent = mathTutorAgent, userQuery = userQuery,
+    check eval:assertLengthCompliance(targetAgent = mathTutorAgent, queries = userQuery,
             minLength = minResponseLength, maxLength = maxResponseLength);
 }
 
-// Tool trajectory (rule based, with eval set)
+// Exact match (rule based, with eval set)
 
-isolated function loadLibraryTrajectoryEvalset() returns map<[ai:ConversationThread]>|error {
-    return ai:loadConversationThreads("tests/resources/evalsets/math-tutor.evalset.json");
+isolated function loadLibraryEvalsetExact() returns map<[ai:ConversationThread]>|error {
+    return ai:loadConversationThreads("tests/resources/evalsets/exactMatchEval.evalset.json");
 }
+
 
 @test:Config {
     groups: ["evaluations"],
     minPassRate: 0.8,
-    dataProvider: loadLibraryTrajectoryEvalset
+    dataProvider: loadLibraryEvalsetExact
+}
+function libExactMatch(ai:ConversationThread thread) returns error? {
+    check eval:assertExactMatch(targetAgent = mathTutorAgent, thread = thread);
+}
+
+// Tool trajectory (rule based, with eval set)
+
+@test:Config {
+    groups: ["evaluations"],
+    minPassRate: 0.8,
+    dataProvider: loadLibraryEvalset
 }
 function libToolTrajectory(ai:ConversationThread thread) returns error? {
     check eval:evaluateToolTrajectory(targetAgent = mathTutorAgent, thread = thread);
@@ -316,7 +328,7 @@ function libSemanticSimilarity(ai:ConversationThread thread) returns error? {
     dataProvider: loadLibraryEvalset
 }
 function libAccuracy(ai:ConversationThread thread) returns error? {
-    check eval:evaluateOutputAccuracy(targetAgent = mathTutorAgent, thread = thread,
+    check eval:evaluateOutputAccuracy(targetAgent = mathTutorAgent, queries = thread,
             judgeModel = evalJudgeModel, judgeScoreThreshold = 0.875);
 }
 
@@ -336,6 +348,6 @@ isolated function loadLibraryAccuracyQueries() returns map<[string]>|error {
     dataProvider: loadLibraryAccuracyQueries
 }
 function libQueryAccuracy(string userQuery) returns error? {
-    check eval:evaluateOutputAccuracyForQuery(targetAgent = mathTutorAgent, userQuery = userQuery,
+    check eval:evaluateOutputAccuracy(targetAgent = mathTutorAgent, queries = userQuery,
             judgeModel = evalJudgeModel, judgeScoreThreshold = 0.8);
 }
