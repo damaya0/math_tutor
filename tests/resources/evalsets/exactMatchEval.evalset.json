@@ -1,0 +1,211 @@
+{
+  "id": "6baac705-73c6-410a-9350-47248ef27086",
+  "name": "exactMatchEval",
+  "description": "Session export",
+  "threads": [
+    {
+      "id": "thread-96c8165c",
+      "description": "",
+      "traces": [
+        {
+          "id": "cb3285e5cf51def7b371b6b16598f4f0",
+          "userMessage": {
+            "role": "user",
+            "content": "no other letters than the answer. ONLY GIVE THE answer as a number. whats 1+1. Please dont use any letters. only the answer as a number"
+          },
+          "iterations": [
+            {
+              "history": [
+                {
+                  "role": "system",
+                  "content": "# Role  \nMath Tutor  \n\n# Instructions  \nYou are a math tutor assistant.\r\n\r\nRULES (MUST FOLLOW):\r\n\r\n* You MUST use the provided mathematical tools (add, subtract, multiply, divide) for ALL calculations, even simple ones.\r\n* You are NOT allowed to compute results mentally or inline.\r\n* If a calculation is required and a tool is available, you MUST call the tool.\r\n* If you do not call a tool when a calculation is required, the response is invalid.\r\n\r\nProvide clear, step-by-step explanations. Include the final answer at the end.\n"
+                },
+                {
+                  "role": "user",
+                  "content": "no other letters than the answer. ONLY GIVE THE answer as a number. whats 1+1. Please dont use any letters. only the answer as a number"
+                },
+                {
+                  "role": "assistant",
+                  "content": null,
+                  "toolCalls": [
+                    {
+                      "name": "sumTool",
+                      "arguments": {
+                        "num1": 1,
+                        "num2": 1
+                      }
+                    }
+                  ]
+                }
+              ],
+              "output": {
+                "role": "assistant",
+                "content": null,
+                "toolCalls": [
+                  {
+                    "name": "sumTool",
+                    "arguments": {
+                      "num1": 1,
+                      "num2": 1
+                    }
+                  }
+                ]
+              },
+              "startTime": "2026-07-15T06:41:37.442Z",
+              "endTime": "2026-07-15T06:41:38.735Z"
+            },
+            {
+              "history": [
+                {
+                  "role": "system",
+                  "content": "# Role  \nMath Tutor  \n\n# Instructions  \nYou are a math tutor assistant.\r\n\r\nRULES (MUST FOLLOW):\r\n\r\n* You MUST use the provided mathematical tools (add, subtract, multiply, divide) for ALL calculations, even simple ones.\r\n* You are NOT allowed to compute results mentally or inline.\r\n* If a calculation is required and a tool is available, you MUST call the tool.\r\n* If you do not call a tool when a calculation is required, the response is invalid.\r\n\r\nProvide clear, step-by-step explanations. Include the final answer at the end.\n"
+                },
+                {
+                  "role": "user",
+                  "content": "no other letters than the answer. ONLY GIVE THE answer as a number. whats 1+1. Please dont use any letters. only the answer as a number"
+                },
+                {
+                  "role": "assistant",
+                  "content": null,
+                  "toolCalls": [
+                    {
+                      "name": "sumTool",
+                      "arguments": {
+                        "num1": 1,
+                        "num2": 1
+                      }
+                    }
+                  ]
+                },
+                {
+                  "role": "function",
+                  "content": "2.0",
+                  "name": "sumTool"
+                }
+              ],
+              "output": {
+                "role": "assistant",
+                "content": "2",
+                "toolCalls": null
+              },
+              "startTime": "2026-07-15T06:41:38.740Z",
+              "endTime": "2026-07-15T06:41:39.733Z"
+            }
+          ],
+          "output": {
+            "role": "assistant",
+            "content": "2",
+            "toolCalls": null
+          },
+          "tools": [
+            {
+              "name": "sumTool",
+              "description": "Calculates the sum of two numbers ",
+              "parametersSchema": {
+                "type": "object",
+                "required": [
+                  "num1",
+                  "num2"
+                ],
+                "properties": {
+                  "num1": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "The first number"
+                  },
+                  "num2": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "The second number"
+                  }
+                }
+              }
+            },
+            {
+              "name": "subtractTool",
+              "description": "Calculates the difference of two numbers ",
+              "parametersSchema": {
+                "type": "object",
+                "required": [
+                  "num1",
+                  "num2"
+                ],
+                "properties": {
+                  "num1": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "The first number"
+                  },
+                  "num2": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "The second number"
+                  }
+                }
+              }
+            },
+            {
+              "name": "multiplyTool",
+              "description": "Calculates the product of two numbers ",
+              "parametersSchema": {
+                "type": "object",
+                "required": [
+                  "num1",
+                  "num2"
+                ],
+                "properties": {
+                  "num1": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "The first number"
+                  },
+                  "num2": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "The second number"
+                  }
+                }
+              }
+            },
+            {
+              "name": "divideTool",
+              "description": "Calculates the division of two numbers Handles division by zero If num2 is zero, returns 0 Otherwise, returns the result of the division ",
+              "parametersSchema": {
+                "type": "object",
+                "required": [
+                  "num1",
+                  "num2"
+                ],
+                "properties": {
+                  "num1": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "The dividend (numerator)"
+                  },
+                  "num2": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "The divisor (denominator)"
+                  }
+                }
+              }
+            }
+          ],
+          "toolCalls": [
+            {
+              "name": "sumTool",
+              "arguments": {
+                "num1": 1,
+                "num2": 1
+              }
+            }
+          ],
+          "startTime": "2026-07-15T06:41:37.439Z",
+          "endTime": "2026-07-15T06:41:39.738Z"
+        }
+      ],
+      "created_on": "2026-07-15T06:42:22.454Z"
+    }
+  ],
+  "created_on": "2026-07-15T06:42:22.454Z"
+}
