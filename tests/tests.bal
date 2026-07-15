@@ -4,6 +4,8 @@ import ballerina/ai;
 import ballerina/test;
 
 
+////////////////////////////////////////////////
+//////////////////////////////////////////////
 
 isolated function loadEvalsetData1() returns map<[ai:ConversationThread]>|error {
     return ai:loadConversationThreads("tests/resources/evalsets/mathtutor1.evalset.json");
@@ -34,8 +36,9 @@ function mathTuteEval(ai:ConversationThread thread) returns error? {
     }
 }
 
-
+///////////////////////////////////////////////////////////
 // ***************Evaluation library codes****************
+///////////////////////////////////////////////////////////
 
 // Length complient (Rule based, With Eval set)
 
@@ -256,6 +259,7 @@ function libLengthCompliance(ai:ConversationThread thread) returns error? {
     check eval:assertLengthCompliance(targetAgent = mathTutorAgent, thread = thread,
             minLength = minResponseLength, maxLength = maxResponseLength);
 }
+
 
 // Length compliance (rule based, no eval set)
 

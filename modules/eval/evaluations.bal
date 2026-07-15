@@ -13,6 +13,12 @@ const string DEFAULT_EVAL_SESSION = "eval-session";
 # + minLength - The minimum accepted response length (inclusive)
 # + maxLength - The maximum accepted response length (inclusive)
 # + return - `()` if every trace passes, or an error describing the first failure
+@EvalTemplate {
+    label: "Length Compliance (Eval Set)",
+    description: "Checks that every agent response length stays within the configured bounds",
+    kind: RULE_BASED,
+    needsEvalset: true
+}
 public isolated function assertLengthCompliance(ai:Agent targetAgent, ai:ConversationThread thread,
         int minLength = 1, int maxLength = 100000) returns error? {
     foreach ai:Trace expectedTrace in thread.traces {
@@ -33,6 +39,12 @@ public isolated function assertLengthCompliance(ai:Agent targetAgent, ai:Convers
 # + maxLength - The maximum accepted response length (inclusive)
 # + sessionId - The memory session ID to run the agent with
 # + return - `()` on success, or an error describing the failure
+@EvalTemplate {
+    label: "Length Compliance (Custom Query)",
+    description: "Checks that the agent response length for a single query stays within the configured bounds",
+    kind: RULE_BASED,
+    needsEvalset: false
+}
 public isolated function evaluateLengthComplianceForQuery(ai:Agent targetAgent, string userQuery,
         int minLength = 1, int maxLength = 100000, string sessionId = DEFAULT_EVAL_SESSION) returns error? {
     string actualResponse = check getAgentResponse(targetAgent = targetAgent, userQuery = userQuery,
@@ -48,6 +60,12 @@ public isolated function evaluateLengthComplianceForQuery(ai:Agent targetAgent, 
 # + targetAgent - The agent under evaluation
 # + thread - The conversation thread loaded from an eval set
 # + return - `()` if every trace passes, or an error describing the first mismatch
+@EvalTemplate {
+    label: "Tool Trajectory",
+    description: "Checks that the agent invokes the same tools with the same arguments as the eval set",
+    kind: RULE_BASED,
+    needsEvalset: true
+}
 public isolated function evaluateToolTrajectory(ai:Agent targetAgent, ai:ConversationThread thread)
         returns error? {
     foreach ai:Trace expectedTrace in thread.traces {
@@ -71,6 +89,12 @@ public isolated function evaluateToolTrajectory(ai:Agent targetAgent, ai:Convers
 # + judgeModel - The model provider used as the LLM judge
 # + judgeScoreThreshold - The minimum judge score (in [0.0, 1.0]) required to pass
 # + return - `()` if every trace passes, or an error describing the first failure
+@EvalTemplate {
+    label: "Semantic Similarity",
+    description: "Uses an LLM judge to compare each agent response against the expected response in the eval set",
+    kind: LLM_JUDGE,
+    needsEvalset: true
+}
 public isolated function evaluateSemanticSimilarity(ai:Agent targetAgent, ai:ConversationThread thread,
         ai:ModelProvider judgeModel, float judgeScoreThreshold = 0.8) returns error? {
     foreach ai:Trace expectedTrace in thread.traces {
@@ -110,6 +134,12 @@ public isolated function evaluateSemanticSimilarity(ai:Agent targetAgent, ai:Con
 # + judgeModel - The model provider used as the LLM judge
 # + judgeScoreThreshold - The minimum judge score (in [0.0, 1.0]) required to pass
 # + return - `()` if every trace passes, or an error describing the first failure
+@EvalTemplate {
+    label: "Output Accuracy (Eval Set)",
+    description: "Uses an LLM judge to check the factual correctness of each agent response in the eval set",
+    kind: LLM_JUDGE,
+    needsEvalset: true
+}
 public isolated function evaluateOutputAccuracy(ai:Agent targetAgent, ai:ConversationThread thread,
         ai:ModelProvider judgeModel, float judgeScoreThreshold = 0.8) returns error? {
     foreach ai:Trace expectedTrace in thread.traces {
@@ -128,6 +158,12 @@ public isolated function evaluateOutputAccuracy(ai:Agent targetAgent, ai:Convers
 # + judgeScoreThreshold - The minimum judge score (in [0.0, 1.0]) required to pass
 # + sessionId - The memory session ID to run the agent with
 # + return - `()` on success, or an error describing the failure
+@EvalTemplate {
+    label: "Output Accuracy (Custom Query)",
+    description: "Uses an LLM judge to check the factual correctness of the agent response to a single query",
+    kind: LLM_JUDGE,
+    needsEvalset: false
+}
 public isolated function evaluateOutputAccuracyForQuery(ai:Agent targetAgent, string userQuery,
         ai:ModelProvider judgeModel, float judgeScoreThreshold = 0.8, string sessionId = DEFAULT_EVAL_SESSION)
         returns error? {
