@@ -313,15 +313,46 @@ function libExactMatch(ai:ConversationThread thread) returns error? {
     check eval:assertExactMatch(targetAgent = mathTutorAgent, thread = thread);
 }
 
-// Tool trajectory (rule based, with eval set)
+// Tool trajectory (rule based, with eval set) — one test per matching mode
 
 @test:Config {
     groups: ["evaluations"],
     minPassRate: 0.8,
     dataProvider: loadLibraryEvalset
 }
-function libToolTrajectory(ai:ConversationThread thread) returns error? {
-    check eval:evaluateToolTrajectory(targetAgent = mathTutorAgent, thread = thread);
+function libToolTrajectoryStrict(ai:ConversationThread thread) returns error? {
+    check eval:evaluateToolTrajectory(targetAgent = mathTutorAgent, thread = thread,
+            matchMode = eval:STRICT);
+}
+
+@test:Config {
+    groups: ["evaluations"],
+    minPassRate: 0.8,
+    dataProvider: loadLibraryEvalset
+}
+function libToolTrajectoryUnordered(ai:ConversationThread thread) returns error? {
+    check eval:evaluateToolTrajectory(targetAgent = mathTutorAgent, thread = thread,
+            matchMode = eval:UNORDERED);
+}
+
+@test:Config {
+    groups: ["evaluations"],
+    minPassRate: 0.8,
+    dataProvider: loadLibraryEvalset
+}
+function libToolTrajectorySubset(ai:ConversationThread thread) returns error? {
+    check eval:evaluateToolTrajectory(targetAgent = mathTutorAgent, thread = thread,
+            matchMode = eval:SUBSET);
+}
+
+@test:Config {
+    groups: ["evaluations"],
+    minPassRate: 0.8,
+    dataProvider: loadLibraryEvalset
+}
+function libToolTrajectorySuperset(ai:ConversationThread thread) returns error? {
+    check eval:evaluateToolTrajectory(targetAgent = mathTutorAgent, thread = thread,
+            matchMode = eval:SUPERSET);
 }
 
 // Semantic similarity (LLM as judge, with eval set)

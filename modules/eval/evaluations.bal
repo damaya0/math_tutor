@@ -46,28 +46,48 @@ public isolated function assertLengthCompliance(ai:Agent targetAgent, ai:Convers
     }
 }
 
-# Checks that the agent invokes the same tools, in the same order and with the same
-# arguments, as recorded in the eval set. Tool-call IDs are ignored since they differ
-# between runs.
+# The matching strategies supported by the tool-trajectory evaluation.
+public enum Mode {
+    # The agent must make exactly the reference tool calls, in the same order
+    STRICT,
+    # The agent must make exactly the reference tool calls, in any order
+    UNORDERED,
+    # The agent may only make tool calls that appear in the reference (no extras);
+    # it does not have to make all of them
+    SUBSET,
+    # The agent must make at least all the reference tool calls; extra calls are allowed
+    SUPERSET
+}
+
+# Checks the agent's tool calls against the trajectory recorded in the eval set.
+# A tool call matches when both the tool name and its arguments are equal;
+# tool-call IDs are ignored since they differ between runs.
+#
+# The strictness of the comparison is controlled by `matchMode`:
+# `STRICT` (exact calls, same order), `UNORDERED` (exact calls, any order),
+# `SUBSET` (no calls outside the reference), `SUPERSET` (all reference calls
+# present, extras allowed).
 #
 # + targetAgent - The agent under evaluation
 # + thread - The conversation thread loaded from an eval set
+# + matchMode - The trajectory matching strategy to apply
 # + return - `()` if every trace passes, or an error describing the first mismatch
 @EvalTemplate {
     label: "Tool Trajectory",
-    description: "Checks that the agent invokes the same tools with the same arguments as the eval set",
+    description: "Checks the agent's tool calls against the eval set trajectory using a configurable matching mode",
     kind: RULE_BASED,
     needsEvalset: true
 }
-public isolated function evaluateToolTrajectory(ai:Agent targetAgent, ai:ConversationThread thread)
-        returns error? {
+public isolated function evaluateToolTrajectory(ai:Agent targetAgent, ai:ConversationThread thread,
+        Mode matchMode = STRICT) returns error? {
     foreach ai:Trace expectedTrace in thread.traces {
         string userQuery = ai:getUserQuery(trace = expectedTrace);
         ai:Trace actualTrace = check targetAgent.run(query = userQuery, sessionId = thread.id);
         ai:FunctionCall[] expectedToolCalls = expectedTrace.toolCalls ?: [];
         ai:FunctionCall[] actualToolCalls = actualTrace.toolCalls ?: [];
-        if !matchToolCalls(expectedToolCalls = expectedToolCalls, actualToolCalls = actualToolCalls) {
-            return error(string `[tool-trajectory] query "${userQuery}": expected tool calls ${describeToolCalls(toolCalls = expectedToolCalls)} but got ${describeToolCalls(toolCalls = actualToolCalls)}`);
+        if !matchTrajectory(expectedToolCalls = expectedToolCalls, actualToolCalls = actualToolCalls,
+                matchMode = matchMode) {
+            return error(string `[tool-trajectory] query "${userQuery}": tool calls do not satisfy ${matchMode} matching; expected ${describeToolCalls(toolCalls = expectedToolCalls)} but got ${describeToolCalls(toolCalls = actualToolCalls)}`);
         }
     }
 }
@@ -387,19 +407,91 @@ isolated function excerptAround(string text, int mismatchIndex) returns string {
     return text.substring(windowStart, windowEnd);
 }
 
-isolated function matchToolCalls(ai:FunctionCall[] expectedToolCalls, ai:FunctionCall[] actualToolCalls)
+isolated function matchTrajectory(ai:FunctionCall[] expectedToolCalls, ai:FunctionCall[] actualToolCalls,
+        Mode matchMode) returns boolean {
+    match matchMode {
+        STRICT => {
+            return matchStrict(expectedToolCalls = expectedToolCalls, actualToolCalls = actualToolCalls);
+        }
+        UNORDERED => {
+            return matchUnordered(expectedToolCalls = expectedToolCalls, actualToolCalls = actualToolCalls);
+        }
+        SUBSET => {
+            return matchSubset(expectedToolCalls = expectedToolCalls, actualToolCalls = actualToolCalls);
+        }
+        SUPERSET => {
+            return matchSuperset(expectedToolCalls = expectedToolCalls, actualToolCalls = actualToolCalls);
+        }
+    }
+    return false;
+}
+
+isolated function callsMatch(ai:FunctionCall expectedCall, ai:FunctionCall actualCall) returns boolean =>
+    expectedCall.name == actualCall.name && expectedCall.arguments == actualCall.arguments;
+
+isolated function matchStrict(ai:FunctionCall[] expectedToolCalls, ai:FunctionCall[] actualToolCalls)
         returns boolean {
     if expectedToolCalls.length() != actualToolCalls.length() {
         return false;
     }
     foreach int callIndex in 0 ..< expectedToolCalls.length() {
-        ai:FunctionCall expectedCall = expectedToolCalls[callIndex];
-        ai:FunctionCall actualCall = actualToolCalls[callIndex];
-        if expectedCall.name != actualCall.name || expectedCall.arguments != actualCall.arguments {
+        if !callsMatch(expectedCall = expectedToolCalls[callIndex], actualCall = actualToolCalls[callIndex]) {
             return false;
         }
     }
     return true;
+}
+
+isolated function matchUnordered(ai:FunctionCall[] expectedToolCalls, ai:FunctionCall[] actualToolCalls)
+        returns boolean {
+    if expectedToolCalls.length() != actualToolCalls.length() {
+        return false;
+    }
+    boolean[] matchedFlags = actualToolCalls.'map(actualCall => false);
+    foreach ai:FunctionCall expectedCall in expectedToolCalls {
+        boolean foundMatch = false;
+        foreach int actualIndex in 0 ..< actualToolCalls.length() {
+            if !matchedFlags[actualIndex]
+                    && callsMatch(expectedCall = expectedCall, actualCall = actualToolCalls[actualIndex]) {
+                matchedFlags[actualIndex] = true;
+                foundMatch = true;
+                break;
+            }
+        }
+        if !foundMatch {
+            return false;
+        }
+    }
+    return true;
+}
+
+isolated function matchSubset(ai:FunctionCall[] expectedToolCalls, ai:FunctionCall[] actualToolCalls)
+        returns boolean {
+    foreach ai:FunctionCall actualCall in actualToolCalls {
+        if !containsCall(toolCalls = expectedToolCalls, targetCall = actualCall) {
+            return false;
+        }
+    }
+    return true;
+}
+
+isolated function matchSuperset(ai:FunctionCall[] expectedToolCalls, ai:FunctionCall[] actualToolCalls)
+        returns boolean {
+    foreach ai:FunctionCall expectedCall in expectedToolCalls {
+        if !containsCall(toolCalls = actualToolCalls, targetCall = expectedCall) {
+            return false;
+        }
+    }
+    return true;
+}
+
+isolated function containsCall(ai:FunctionCall[] toolCalls, ai:FunctionCall targetCall) returns boolean {
+    foreach ai:FunctionCall toolCall in toolCalls {
+        if callsMatch(expectedCall = targetCall, actualCall = toolCall) {
+            return true;
+        }
+    }
+    return false;
 }
 
 isolated function describeToolCalls(ai:FunctionCall[] toolCalls) returns string {
