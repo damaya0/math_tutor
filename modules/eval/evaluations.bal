@@ -1,6 +1,15 @@
 import ballerina/ai;
 import ballerina/uuid;
 
+# The structured output of an LLM judge: a score plus the reasoning behind it.
+# The reasoning is surfaced only in failure errors; passing evaluations stay silent.
+type JudgeVerdict record {|
+    # The score assigned by the judge, in the range [0.0, 1.0]
+    float evalScore;
+    # A brief justification for the assigned score
+    string judgeReasoning;
+|};
+
 // ***** Rule-based evaluations *****
 
 # Checks that agent response lengths fall within the given bounds (inclusive).
@@ -21,7 +30,7 @@ import ballerina/uuid;
     needsEvalset: false
 }
 public isolated function assertLengthCompliance(ai:Agent targetAgent, ai:ConversationThread|string queries,
-        int minLength = 1, int maxLength = 100000) returns error? {
+        int minLength = 1, int maxLength = 10000) returns error? {
     if queries is string {
         string actualResponse = check getAgentResponse(targetAgent = targetAgent, userQuery = queries,
                 sessionId = uuid:createType4AsString());
@@ -63,27 +72,36 @@ public isolated function evaluateToolTrajectory(ai:Agent targetAgent, ai:Convers
     }
 }
 
-# Checks that every agent response is character-for-character identical to the
-# expected response recorded in the eval set. A single differing character —
-# including whitespace, punctuation, or formatting — fails the thread.
+# Checks that every agent response exactly matches the expected response recorded
+# in the eval set. By default, leading/trailing whitespace is stripped before
+# comparing; every other character — including inner whitespace, punctuation, and
+# formatting — must match exactly.
 #
 # + targetAgent - The agent under evaluation
 # + thread - The conversation thread loaded from an eval set
-# + return - `()` if every trace matches exactly, or an error describing the first mismatch
+# + caseSensitive - Whether the comparison is case-sensitive
+# + stripWhitespace - Whether to strip leading/trailing whitespace before comparing
+# + return - `()` if every trace matches, or an error describing the first mismatch
 @EvalTemplate {
     label: "Exact Match",
-    description: "Checks that each agent response is character-for-character identical to the expected response in the eval set",
+    description: "Checks that each agent response exactly matches the expected response in the eval set",
     kind: RULE_BASED,
     needsEvalset: true
 }
-public isolated function assertExactMatch(ai:Agent targetAgent, ai:ConversationThread thread)
-        returns error? {
+public isolated function assertExactMatch(ai:Agent targetAgent, ai:ConversationThread thread,
+        boolean caseSensitive = true, boolean stripWhitespace = true) returns error? {
     foreach ai:Trace expectedTrace in thread.traces {
         string userQuery = ai:getUserQuery(trace = expectedTrace);
         ai:ChatAssistantMessage expectedOutput = check expectedTrace.output;
-        string expectedResponse = expectedOutput.content ?: "";
-        string actualResponse = check getAgentResponse(targetAgent = targetAgent, userQuery = userQuery,
+        string rawExpected = expectedOutput.content ?: "";
+        string rawActual = check getAgentResponse(targetAgent = targetAgent, userQuery = userQuery,
                 sessionId = thread.id);
+        string expectedResponse = stripWhitespace ? rawExpected.trim() : rawExpected;
+        string actualResponse = stripWhitespace ? rawActual.trim() : rawActual;
+        if !caseSensitive {
+            expectedResponse = expectedResponse.toLowerAscii();
+            actualResponse = actualResponse.toLowerAscii();
+        }
         if actualResponse != expectedResponse {
             int mismatchIndex = findFirstMismatch(expectedResponse = expectedResponse,
                     actualResponse = actualResponse);
@@ -115,7 +133,7 @@ public isolated function evaluateSemanticSimilarity(ai:Agent targetAgent, ai:Con
         ai:ChatAssistantMessage expectedOutput = check expectedTrace.output;
         ai:Trace actualTrace = check targetAgent.run(query = userQuery, sessionId = thread.id);
         ai:ChatAssistantMessage actualOutput = check actualTrace.output;
-        float evalScore = check judgeModel->generate(`You are an expert evaluator. Your sole criterion is SEMANTIC SIMILARITY: does the actual response convey the same meaning as the expected response?
+        JudgeVerdict judgeVerdict = check judgeModel->generate(`You are an expert evaluator. Your sole criterion is SEMANTIC SIMILARITY: does the actual response convey the same meaning as the expected response?
 
         User Query: ${userQuery}
         Actual Response: ${actualOutput.content.toString()}
@@ -133,9 +151,11 @@ public isolated function evaluateSemanticSimilarity(ai:Agent targetAgent, ai:Con
         0.25 = Some surface similarity but the core answer or key facts differ
         0.5  = Partially overlapping meaning; some key facts match but others differ
         0.75 = Mostly equivalent; only minor factual nuances differ
-        1.0  = Semantically equivalent: same meaning, same key facts, even if worded differently`);
+        1.0  = Semantically equivalent: same meaning, same key facts, even if worded differently
+
+        Along with the score, provide a brief reasoning that justifies it, citing the specific similarities or differences you found.`);
         check checkScore(metricName = "semantic-similarity", userQuery = userQuery,
-                evalScore = evalScore, passingScore = judgeScoreThreshold);
+                judgeVerdict = judgeVerdict, passingScore = judgeScoreThreshold);
     }
 }
 
@@ -174,7 +194,7 @@ isolated function checkQueryAccuracy(ai:Agent targetAgent, string userQuery, ai:
         float judgeScoreThreshold, string sessionId) returns error? {
     ai:Trace actualTrace = check targetAgent.run(query = userQuery, sessionId = sessionId);
     ai:ChatAssistantMessage actualOutput = check actualTrace.output;
-    float evalScore = check judgeModel->generate(`You are an expert evaluator. Your sole criterion is ACCURACY: is the factual information in the response correct and reliable?
+    JudgeVerdict judgeVerdict = check judgeModel->generate(`You are an expert evaluator. Your sole criterion is ACCURACY: is the factual information in the response correct and reliable?
 
         User Query: ${userQuery}
         Agent Response: ${actualOutput.content.toString()}
@@ -192,9 +212,11 @@ isolated function checkQueryAccuracy(ai:Agent targetAgent, string userQuery, ai:
         0.25 = Several inaccuracies or one major factual error that undermines trust
         0.5  = Mostly accurate but with noticeable errors or misleading simplifications
         0.75 = Accurate with only minor imprecisions that do not materially mislead
-        1.0  = Fully accurate; all factual claims are correct and reliably stated`);
+        1.0  = Fully accurate; all factual claims are correct and reliably stated
+
+        Along with the score, provide a brief reasoning that justifies it, citing the specific claims you checked.`);
     check checkScore(metricName = "accuracy", userQuery = userQuery,
-            evalScore = evalScore, passingScore = judgeScoreThreshold);
+            judgeVerdict = judgeVerdict, passingScore = judgeScoreThreshold);
 }
 
 // ***** Shared helpers *****
@@ -218,10 +240,10 @@ isolated function checkLength(string userQuery, string actualResponse, int minLe
     }
 }
 
-isolated function checkScore(string metricName, string userQuery, float evalScore, float passingScore)
-        returns error? {
-    if evalScore < passingScore {
-        return error(string `[${metricName}] query "${userQuery}": judge score ${evalScore} is below the passing score ${passingScore}`);
+isolated function checkScore(string metricName, string userQuery, JudgeVerdict judgeVerdict,
+        float passingScore) returns error? {
+    if judgeVerdict.evalScore < passingScore {
+        return error(string `[${metricName}] query "${userQuery}": judge score ${judgeVerdict.evalScore} is below the passing score ${passingScore}. Judge reasoning: ${judgeVerdict.judgeReasoning}`);
     }
 }
 

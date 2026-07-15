@@ -242,7 +242,14 @@ function customQueryAccuracy(string userQuery) returns error? {
 //
 // When the module is published as ballerina/ai.eval, only the import changes.
 
-final ai:ModelProvider evalJudgeModel = check ai:getDefaultModelProvider();
+// The judge runs at temperature 0 so identical inputs always score identically.
+// Set these two values in tests/Config.toml — same values as the existing
+// [ballerina.ai.wso2ProviderConfig] section.
+configurable string serviceUrl = ?;
+configurable string accessToken = ?;
+
+final ai:ModelProvider evalJudgeModel = check new ai:Wso2ModelProvider(serviceUrl = serviceUrl,
+        accessToken = accessToken, temperature = 0.0);
 
 isolated function loadLibraryEvalset() returns map<[ai:ConversationThread]>|error {
     return ai:loadConversationThreads("tests/resources/evalsets/mathtutor1.evalset.json");
