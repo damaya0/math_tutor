@@ -277,7 +277,7 @@ isolated function loadLibraryUserQueries() returns map<[string]>|error {
     dataProvider: loadLibraryUserQueries
 }
 function libQueryLengthCompliance(string userQuery) returns error? {
-    check eval:evaluateLengthComplianceForQuery(targetAgent = mathTutorAgent, userQuery = userQuery,
+    check eval:assertLengthComplianceForQuery(targetAgent = mathTutorAgent, userQuery = userQuery,
             minLength = minResponseLength, maxLength = maxResponseLength);
 }
 

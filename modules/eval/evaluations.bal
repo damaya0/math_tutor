@@ -45,7 +45,7 @@ public isolated function assertLengthCompliance(ai:Agent targetAgent, ai:Convers
     kind: RULE_BASED,
     needsEvalset: false
 }
-public isolated function evaluateLengthComplianceForQuery(ai:Agent targetAgent, string userQuery,
+public isolated function assertLengthComplianceForQuery(ai:Agent targetAgent, string userQuery,
         int minLength = 1, int maxLength = 100000, string sessionId = DEFAULT_EVAL_SESSION) returns error? {
     string actualResponse = check getAgentResponse(targetAgent = targetAgent, userQuery = userQuery,
             sessionId = sessionId);
