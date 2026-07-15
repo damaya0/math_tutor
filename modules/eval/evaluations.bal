@@ -110,6 +110,107 @@ public isolated function assertExactMatch(ai:Agent targetAgent, ai:ConversationT
     }
 }
 
+# Checks that agent responses contain none of the prohibited strings.
+#
+# Accepts either a conversation thread loaded from an eval set (every trace is
+# replayed into the thread's session; the whole thread fails if even one response
+# contains a prohibited string) or a single user query (run in a fresh, randomly
+# generated session).
+#
+# An empty prohibited list is treated as a configuration error and fails.
+#
+# + targetAgent - The agent under evaluation
+# + queries - The eval set conversation thread, or a single user query
+# + prohibitedStrings - The strings that must not appear in any agent response
+# + caseSensitive - Whether the matching is case-sensitive
+# + return - `()` if no prohibited content is found, or an error describing the first violation
+@EvalTemplate {
+    label: "Content Safety",
+    description: "Checks that agent responses contain none of the configured prohibited strings",
+    kind: RULE_BASED,
+    needsEvalset: false
+}
+public isolated function assertContentSafety(ai:Agent targetAgent, ai:ConversationThread|string queries,
+        string[] prohibitedStrings, boolean caseSensitive = false) returns error? {
+    if prohibitedStrings.length() == 0 {
+        return error("[content-safety] no prohibited strings configured; add at least one prohibited string");
+    }
+    if queries is string {
+        string actualResponse = check getAgentResponse(targetAgent = targetAgent, userQuery = queries,
+                sessionId = uuid:createType4AsString());
+        return checkProhibitedContent(userQuery = queries, actualResponse = actualResponse,
+                prohibitedStrings = prohibitedStrings, caseSensitive = caseSensitive);
+    }
+    foreach ai:Trace expectedTrace in queries.traces {
+        string userQuery = ai:getUserQuery(trace = expectedTrace);
+        string actualResponse = check getAgentResponse(targetAgent = targetAgent, userQuery = userQuery,
+                sessionId = queries.id);
+        check checkProhibitedContent(userQuery = userQuery, actualResponse = actualResponse,
+                prohibitedStrings = prohibitedStrings, caseSensitive = caseSensitive);
+    }
+}
+
+# Checks that the expected response recorded in the eval set appears as a substring
+# of the agent response. Useful when the agent may elaborate but must include a
+# canonical answer verbatim.
+#
+# + targetAgent - The agent under evaluation
+# + thread - The conversation thread loaded from an eval set
+# + caseSensitive - Whether the substring matching is case-sensitive
+# + return - `()` if every trace passes, or an error describing the first miss
+@EvalTemplate {
+    label: "Contains Match",
+    description: "Checks that the expected response from the eval set appears as a substring of the agent response",
+    kind: RULE_BASED,
+    needsEvalset: true
+}
+public isolated function assertContainsMatch(ai:Agent targetAgent, ai:ConversationThread thread,
+        boolean caseSensitive = false) returns error? {
+    foreach ai:Trace expectedTrace in thread.traces {
+        string userQuery = ai:getUserQuery(trace = expectedTrace);
+        ai:ChatAssistantMessage expectedOutput = check expectedTrace.output;
+        string expectedResponse = expectedOutput.content ?: "";
+        string actualResponse = check getAgentResponse(targetAgent = targetAgent, userQuery = userQuery,
+                sessionId = thread.id);
+        string compareExpected = caseSensitive ? expectedResponse : expectedResponse.toLowerAscii();
+        string compareActual = caseSensitive ? actualResponse : actualResponse.toLowerAscii();
+        if !compareActual.includes(compareExpected) {
+            return error(string `[contains-match] query "${userQuery}": expected response not found in agent response (actual length ${actualResponse.length()}, expected length ${expectedResponse.length()})`);
+        }
+    }
+}
+
+# Checks that the agent completes every run within the given number of iterations.
+#
+# Accepts either a conversation thread loaded from an eval set (every trace is
+# replayed into the thread's session and its run checked) or a single user query
+# (run in a fresh, randomly generated session).
+#
+# + targetAgent - The agent under evaluation
+# + queries - The eval set conversation thread, or a single user query
+# + maxIterations - The maximum number of iterations allowed per agent run
+# + return - `()` if every run stays within the limit, or an error describing the first excess
+@EvalTemplate {
+    label: "Iteration Efficiency",
+    description: "Checks that the agent completes each run within the configured iteration limit",
+    kind: RULE_BASED,
+    needsEvalset: false
+}
+public isolated function assertIterationEfficiency(ai:Agent targetAgent, ai:ConversationThread|string queries,
+        int maxIterations = 5) returns error? {
+    if queries is string {
+        ai:Trace actualTrace = check targetAgent.run(query = queries, sessionId = uuid:createType4AsString());
+        return checkIterationCount(userQuery = queries, actualTrace = actualTrace,
+                maxIterations = maxIterations);
+    }
+    foreach ai:Trace expectedTrace in queries.traces {
+        string userQuery = ai:getUserQuery(trace = expectedTrace);
+        ai:Trace actualTrace = check targetAgent.run(query = userQuery, sessionId = queries.id);
+        check checkIterationCount(userQuery = userQuery, actualTrace = actualTrace,
+                maxIterations = maxIterations);
+    }
+}
+
 // ***** LLM-as-judge evaluations *****
 
 # Uses an LLM judge to check that every agent response for the thread conveys the
@@ -244,6 +345,29 @@ isolated function checkScore(string metricName, string userQuery, JudgeVerdict j
         float passingScore) returns error? {
     if judgeVerdict.evalScore < passingScore {
         return error(string `[${metricName}] query "${userQuery}": judge score ${judgeVerdict.evalScore} is below the passing score ${passingScore}. Judge reasoning: ${judgeVerdict.judgeReasoning}`);
+    }
+}
+
+isolated function checkProhibitedContent(string userQuery, string actualResponse, string[] prohibitedStrings,
+        boolean caseSensitive) returns error? {
+    string compareResponse = caseSensitive ? actualResponse : actualResponse.toLowerAscii();
+    string[] foundStrings = [];
+    foreach string prohibitedString in prohibitedStrings {
+        string compareProhibited = caseSensitive ? prohibitedString : prohibitedString.toLowerAscii();
+        if compareResponse.includes(compareProhibited) {
+            foundStrings.push(prohibitedString);
+        }
+    }
+    if foundStrings.length() > 0 {
+        return error(string `[content-safety] query "${userQuery}": response contains ${foundStrings.length()} prohibited string(s): "${string:'join("\", \"", ...foundStrings)}"`);
+    }
+}
+
+isolated function checkIterationCount(string userQuery, ai:Trace actualTrace, int maxIterations)
+        returns error? {
+    int actualIterations = actualTrace.iterations.length();
+    if actualIterations > maxIterations {
+        return error(string `[iteration-efficiency] query "${userQuery}": agent used ${actualIterations} iterations, exceeding the limit of ${maxIterations}`);
     }
 }
 

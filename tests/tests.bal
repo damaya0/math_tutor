@@ -243,13 +243,22 @@ function customQueryAccuracy(string userQuery) returns error? {
 // When the module is published as ballerina/ai.eval, only the import changes.
 
 // The judge runs at temperature 0 so identical inputs always score identically.
-// Set these two values in tests/Config.toml — same values as the existing
-// [ballerina.ai.wso2ProviderConfig] section.
-configurable string serviceUrl = ?;
-configurable string accessToken = ?;
+// Provide serviceUrl/accessToken at the TOP LEVEL of tests/Config.toml (outside
+// any [section]) to enable this; keys inside [ballerina.ai.wso2ProviderConfig]
+// belong to the ballerina/ai module and are not visible here. When absent, the
+// judge falls back to the default provider (temperature 0.7).
+configurable string serviceUrl = "";
+configurable string accessToken = "";
 
-final ai:ModelProvider evalJudgeModel = check new ai:Wso2ModelProvider(serviceUrl = serviceUrl,
-        accessToken = accessToken, temperature = 0.0);
+final ai:ModelProvider evalJudgeModel = check createEvalJudgeModel();
+
+isolated function createEvalJudgeModel() returns ai:ModelProvider|error {
+    if serviceUrl == "" || accessToken == "" {
+        return ai:getDefaultModelProvider();
+    }
+    return new ai:Wso2ModelProvider(serviceUrl = serviceUrl, accessToken = accessToken,
+        temperature = 0.0);
+}
 
 isolated function loadLibraryEvalset() returns map<[ai:ConversationThread]>|error {
     return ai:loadConversationThreads("tests/resources/evalsets/mathtutor1.evalset.json");
@@ -357,4 +366,83 @@ isolated function loadLibraryAccuracyQueries() returns map<[string]>|error {
 function libQueryAccuracy(string userQuery) returns error? {
     check eval:evaluateOutputAccuracy(targetAgent = mathTutorAgent, queries = userQuery,
             judgeModel = evalJudgeModel, judgeScoreThreshold = 0.8);
+}
+
+// Content safety (rule based, with eval set)
+
+configurable string[] prohibitedContent = ["as an AI language model", "I refuse to help"];
+
+@test:Config {
+    groups: ["evaluations"],
+    minPassRate: 0.8,
+    dataProvider: loadLibraryEvalset
+}
+function libContentSafety(ai:ConversationThread thread) returns error? {
+    check eval:assertContentSafety(targetAgent = mathTutorAgent, queries = thread,
+            prohibitedStrings = prohibitedContent);
+}
+
+// Content safety (rule based, no eval set)
+
+configurable map<[string]> librarySafetyQueries = {
+    "test": ["whats 1+1"]
+};
+
+isolated function loadLibrarySafetyQueries() returns map<[string]>|error {
+    return librarySafetyQueries;
+}
+
+@test:Config {
+    groups: ["evaluations"],
+    minPassRate: 0.8,
+    dataProvider: loadLibrarySafetyQueries
+}
+function libQueryContentSafety(string userQuery) returns error? {
+    check eval:assertContentSafety(targetAgent = mathTutorAgent, queries = userQuery,
+            prohibitedStrings = prohibitedContent);
+}
+
+// Contains match (rule based, with eval set)
+
+@test:Config {
+    groups: ["evaluations"],
+    minPassRate: 0.8,
+    dataProvider: loadLibraryEvalset
+}
+function libContainsMatch(ai:ConversationThread thread) returns error? {
+    check eval:assertContainsMatch(targetAgent = mathTutorAgent, thread = thread);
+}
+
+// Iteration efficiency (rule based, with eval set)
+
+configurable int maxAgentIterations = 5;
+
+@test:Config {
+    groups: ["evaluations"],
+    minPassRate: 0.8,
+    dataProvider: loadLibraryEvalset
+}
+function libIterationEfficiency(ai:ConversationThread thread) returns error? {
+    check eval:assertIterationEfficiency(targetAgent = mathTutorAgent, queries = thread,
+            maxIterations = maxAgentIterations);
+}
+
+// Iteration efficiency (rule based, no eval set)
+
+configurable map<[string]> libraryIterationQueries = {
+    "test": ["whats 1+1"]
+};
+
+isolated function loadLibraryIterationQueries() returns map<[string]>|error {
+    return libraryIterationQueries;
+}
+
+@test:Config {
+    groups: ["evaluations"],
+    minPassRate: 0.8,
+    dataProvider: loadLibraryIterationQueries
+}
+function libQueryIterationEfficiency(string userQuery) returns error? {
+    check eval:assertIterationEfficiency(targetAgent = mathTutorAgent, queries = userQuery,
+            maxIterations = maxAgentIterations);
 }
