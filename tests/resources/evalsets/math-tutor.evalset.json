@@ -94,7 +94,7 @@
           ],
           "output": {
             "role": "assistant",
-            "content": "To calculate \\(5 + 1\\), I used the sum tool:\n\n\\[\n5 + 1 = 6\n\\]\n\nThe final answer is \\(6\\).",
+            "content": "6",
             "toolCalls": null
           },
           "tools": [
@@ -344,7 +344,7 @@
           ],
           "output": {
             "role": "assistant",
-            "content": "To calculate \\(4 - 8\\), I used the subtract tool:\n\n\\[\n4 - 8 = -4\n\\]\n\nThe final answer is \\(-4\\).",
+            "content": "-4",
             "toolCalls": null
           },
           "tools": [
