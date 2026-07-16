@@ -3358,6 +3358,14 @@
           ],
           "toolCalls": [
             {
+              "id": "tool_1784175921530_tzrfc4x",
+              "name": "sumTool",
+              "arguments": {
+                "num1": 1,
+                "num2": 2
+              }
+            },
+            {
               "name": "sumTool",
               "arguments": {
                 "num1": 3,

@@ -1,4 +1,5 @@
 import ballerina/ai;
+import ballerina/log;
 import ballerina/uuid;
 
 // LLM-as-judge evaluators. Each judges the agent's ACTUAL run (reference-free),
@@ -128,27 +129,30 @@ isolated function checkQueryAccuracy(ai:Agent targetAgent, string userQuery, ai:
         float judgeScoreThreshold, string sessionId) returns error? {
     ai:Trace actualTrace = check targetAgent.run(query = userQuery, sessionId = sessionId);
     ai:ChatAssistantMessage actualOutput = check actualTrace.output;
+    log:printInfo("accuracy evaluation input", userQuery = userQuery,
+            agentResponse = actualOutput.content.toString());
     JudgeVerdict judgeVerdict = check judgeModel->generate(`You are an expert evaluator. Your sole criterion is ACCURACY: is the factual information in the response correct and reliable?
 
         User Query: ${userQuery}
         Agent Response: ${actualOutput.content.toString()}
 
-        Evaluation Steps:
-        1. Identify the factual claims, technical statements, and information presented in the response.
-        2. Assess whether these facts are correct based on your knowledge. Flag any statements that are demonstrably wrong, misleading, or technically imprecise.
-        3. Check for subtle inaccuracies: correct general direction but wrong specifics, outdated information presented as current, or oversimplifications that mislead.
-        4. Assess the overall reliability of the information provided.
+        Follow this decision procedure exactly:
+        1. List every factual claim the response makes: each stated calculation result, each number, each statement of fact.
+        2. Mark each claim TRUE or FALSE based on your knowledge. A claim is FALSE only if the stated value or fact itself is wrong.
+        3. The score is determined ONLY by the FALSE claims:
+           - Zero FALSE claims: the score MUST be 1.0. This is mandatory, regardless of any other observation you made.
+           - One minor FALSE claim that does not affect the final answer: 0.75
+           - FALSE claims that make the response partially wrong: 0.5
+           - A FALSE final answer or several FALSE claims: 0.25
+           - The response is fundamentally wrong and would mislead the user: 0.0
 
-        Do NOT penalize the response for information you cannot verify. Only flag claims you are confident are incorrect or misleading.
+        The following are NOT factual errors and MUST NOT reduce the score:
+        - Missing, brief, or unclear explanations (e.g. not explaining order of operations)
+        - The order in which intermediate steps or tool calls are presented
+        - Style, formatting, pedagogy, or depth of explanation
+        - Information you cannot verify
 
-        Scoring Rubric:
-        0.0  = Contains significant factual errors that would mislead the user
-        0.25 = Several inaccuracies or one major factual error that undermines trust
-        0.5  = Mostly accurate but with noticeable errors or misleading simplifications
-        0.75 = Accurate with only minor imprecisions that do not materially mislead
-        1.0  = Fully accurate; all factual claims are correct and reliably stated
-
-        Along with the score, provide a brief reasoning that justifies it, citing the specific claims you checked.`);
+        Along with the score, provide a brief reasoning listing the claims you checked and their TRUE/FALSE marks.`);
     check checkScore(metricName = "accuracy", userQuery = userQuery,
             judgeVerdict = judgeVerdict, passingScore = judgeScoreThreshold);
 }

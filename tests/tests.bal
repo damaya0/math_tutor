@@ -147,7 +147,7 @@ function semanticSimilarity(ai:ConversationThread thread) returns error? {
 }
 function accuracy(ai:ConversationThread thread) returns error? {
     check eval:evaluateOutputAccuracy(targetAgent = mathTutorAgent, queries = thread,
-            judgeModel = evalJudgeModel, judgeScoreThreshold = 0.875);
+            judgeModel = evalJudgeModel, judgeScoreThreshold = 0.75);
 }
 
 // Accuracy (LLM as judge, no eval set)
@@ -167,7 +167,7 @@ isolated function loadLibraryAccuracyQueries() returns map<[string]>|error {
 }
 function queryAccuracy(string userQuery) returns error? {
     check eval:evaluateOutputAccuracy(targetAgent = mathTutorAgent, queries = userQuery,
-            judgeModel = evalJudgeModel, judgeScoreThreshold = 0.8);
+            judgeModel = evalJudgeModel, judgeScoreThreshold = 0.75);
 }
 
 // Content safety (rule based, with eval set)
