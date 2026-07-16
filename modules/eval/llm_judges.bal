@@ -1,5 +1,4 @@
 import ballerina/ai;
-import ballerina/log;
 import ballerina/uuid;
 
 // LLM-as-judge evaluators. Each judges the agent's ACTUAL run (reference-free),
@@ -16,10 +15,10 @@ type JudgeVerdict record {|
     string judgeReasoning;
 |};
 
-isolated function checkScore(string metricName, string userQuery, JudgeVerdict judgeVerdict,
-        float passingScore) returns error? {
+isolated function checkScore(string metricName, string userQuery, string actualResponse,
+        JudgeVerdict judgeVerdict, float passingScore) returns error? {
     if judgeVerdict.evalScore < passingScore {
-        return error(string `[${metricName}] query "${userQuery}": judge score ${judgeVerdict.evalScore} is below the passing score ${passingScore}. Judge reasoning: ${judgeVerdict.judgeReasoning}`);
+        return error(string `[${metricName}] query "${userQuery}": judge score ${judgeVerdict.evalScore} is below the passing score ${passingScore}. Judge reasoning: ${judgeVerdict.judgeReasoning}."`, detail = actualResponse);
     }
 }
 
@@ -33,14 +32,16 @@ isolated function runTraceJudge(ai:Agent targetAgent, ai:ConversationThread|stri
     if queries is string {
         ai:Trace actualTrace = check targetAgent.run(query = queries, sessionId = uuid:createType4AsString());
         JudgeVerdict judgeVerdict = check scoreTrace(queries, actualTrace);
-        return checkScore(metricName = metricName, userQuery = queries, judgeVerdict = judgeVerdict,
+        return checkScore(metricName = metricName, userQuery = queries,
+                actualResponse = check getResponseText(trace = actualTrace), judgeVerdict = judgeVerdict,
                 passingScore = judgeScoreThreshold);
     }
     foreach ai:Trace expectedTrace in queries.traces {
         string userQuery = ai:getUserQuery(trace = expectedTrace);
         ai:Trace actualTrace = check targetAgent.run(query = userQuery, sessionId = queries.id);
         JudgeVerdict judgeVerdict = check scoreTrace(userQuery, actualTrace);
-        check checkScore(metricName = metricName, userQuery = userQuery, judgeVerdict = judgeVerdict,
+        check checkScore(metricName = metricName, userQuery = userQuery,
+                actualResponse = check getResponseText(trace = actualTrace), judgeVerdict = judgeVerdict,
                 passingScore = judgeScoreThreshold);
     }
 }
@@ -90,7 +91,8 @@ public isolated function evaluateSemanticSimilarity(ai:Agent targetAgent, ai:Con
 
         Along with the score, provide a brief reasoning that justifies it, citing the specific similarities or differences you found.`);
         check checkScore(metricName = "semantic-similarity", userQuery = userQuery,
-                judgeVerdict = judgeVerdict, passingScore = judgeScoreThreshold);
+                actualResponse = actualOutput.content.toString(), judgeVerdict = judgeVerdict,
+                passingScore = judgeScoreThreshold);
     }
 }
 
@@ -129,8 +131,6 @@ isolated function checkQueryAccuracy(ai:Agent targetAgent, string userQuery, ai:
         float judgeScoreThreshold, string sessionId) returns error? {
     ai:Trace actualTrace = check targetAgent.run(query = userQuery, sessionId = sessionId);
     ai:ChatAssistantMessage actualOutput = check actualTrace.output;
-    log:printInfo("accuracy evaluation input", userQuery = userQuery,
-            agentResponse = actualOutput.content.toString());
     JudgeVerdict judgeVerdict = check judgeModel->generate(`You are an expert evaluator. Your sole criterion is ACCURACY: is the factual information in the response correct and reliable?
 
         User Query: ${userQuery}
@@ -154,7 +154,8 @@ isolated function checkQueryAccuracy(ai:Agent targetAgent, string userQuery, ai:
 
         Along with the score, provide a brief reasoning listing the claims you checked and their TRUE/FALSE marks.`);
     check checkScore(metricName = "accuracy", userQuery = userQuery,
-            judgeVerdict = judgeVerdict, passingScore = judgeScoreThreshold);
+            actualResponse = actualOutput.content.toString(), judgeVerdict = judgeVerdict,
+            passingScore = judgeScoreThreshold);
 }
 
 // ***** Response-quality judges *****

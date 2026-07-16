@@ -2,6 +2,7 @@ import MathTutor.eval;
 
 import ballerina/ai;
 import ballerina/test;
+import ballerinax/ai.anthropic;
 
 // ***************Evaluations using the MathTutor.eval library****************
 //
@@ -12,23 +13,13 @@ import ballerina/test;
 //
 // When the module is published as ballerina/ai.eval, only the import changes.
 
-// The judge runs at temperature 0 so identical inputs always score identically.
-// Provide serviceUrl/accessToken at the TOP LEVEL of tests/Config.toml (outside
-// any [section]) to enable this; keys inside [ballerina.ai.wso2ProviderConfig]
-// belong to the ballerina/ai module and are not visible here. When absent, the
-// judge falls back to the default provider (temperature 0.7).
-configurable string serviceUrl = "";
-configurable string accessToken = "";
+// LLM judge: Anthropic Claude at temperature 0 so identical inputs always score
+// identically. Paste the real API key as the default below, or override it at the
+// TOP LEVEL of tests/Config.toml with: anthropicApiKey = "sk-ant-..."
+configurable string anthropicApiKey = "key";
 
-final ai:ModelProvider evalJudgeModel = check createEvalJudgeModel();
-
-isolated function createEvalJudgeModel() returns ai:ModelProvider|error {
-    if serviceUrl == "" || accessToken == "" {
-        return ai:getDefaultModelProvider();
-    }
-    return new ai:Wso2ModelProvider(serviceUrl = serviceUrl, accessToken = accessToken,
-        temperature = 0.0);
-}
+final ai:ModelProvider evalJudgeModel = check new anthropic:ModelProvider(apiKey = anthropicApiKey,
+        modelType = anthropic:CLAUDE_SONNET_4_5, temperature = 0.0);
 
 isolated function loadLibraryEvalset() returns map<[ai:ConversationThread]>|error {
     return ai:loadConversationThreads("tests/resources/evalsets/mathtutor1.evalset.json");
@@ -214,7 +205,6 @@ function queryContentSafety(string userQuery) returns error? {
 function containsMatch(ai:ConversationThread thread) returns error? {
     check eval:assertContainsMatch(targetAgent = mathTutorAgent, thread = thread);
 }
-
 // Iteration efficiency (rule based, with eval set)
 
 configurable int maxAgentIterations = 5;
