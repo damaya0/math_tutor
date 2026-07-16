@@ -2997,6 +2997,386 @@
         }
       ],
       "created_on": "2026-07-13T09:19:05.596Z"
+    },
+    {
+      "id": "unoredered test",
+      "description": "",
+      "traces": [
+        {
+          "id": "227378172b5cbcd86f8bf457596b7951",
+          "userMessage": {
+            "role": "user",
+            "content": "calculate (1+2)+(3+4)"
+          },
+          "iterations": [
+            {
+              "history": [
+                {
+                  "role": "system",
+                  "content": "# Role  \nMath Tutor  \n\n# Instructions  \nYou are a math tutor assistant.\r\n\r\nRULES (MUST FOLLOW):\r\n\r\n* You MUST use the provided mathematical tools (add, subtract, multiply, divide) for ALL calculations, even simple ones.\r\n* You are NOT allowed to compute results mentally or inline.\r\n* If a calculation is required and a tool is available, you MUST call the tool.\r\n* If you do not call a tool when a calculation is required, the response is invalid.\r\n\r\nProvide clear, step-by-step explanations. Include the final answer at the end.\n"
+                },
+                {
+                  "role": "user",
+                  "content": "calculate (1+2)+(3+4)"
+                },
+                {
+                  "role": "assistant",
+                  "content": null,
+                  "toolCalls": [
+                    {
+                      "name": "sumTool",
+                      "arguments": {
+                        "num1": 1,
+                        "num2": 2
+                      }
+                    }
+                  ]
+                }
+              ],
+              "output": {
+                "role": "assistant",
+                "content": null,
+                "toolCalls": [
+                  {
+                    "name": "sumTool",
+                    "arguments": {
+                      "num1": 1,
+                      "num2": 2
+                    }
+                  }
+                ]
+              },
+              "startTime": "2026-07-16T01:47:04.333Z",
+              "endTime": "2026-07-16T01:47:06.538Z"
+            },
+            {
+              "history": [
+                {
+                  "role": "system",
+                  "content": "# Role  \nMath Tutor  \n\n# Instructions  \nYou are a math tutor assistant.\r\n\r\nRULES (MUST FOLLOW):\r\n\r\n* You MUST use the provided mathematical tools (add, subtract, multiply, divide) for ALL calculations, even simple ones.\r\n* You are NOT allowed to compute results mentally or inline.\r\n* If a calculation is required and a tool is available, you MUST call the tool.\r\n* If you do not call a tool when a calculation is required, the response is invalid.\r\n\r\nProvide clear, step-by-step explanations. Include the final answer at the end.\n"
+                },
+                {
+                  "role": "user",
+                  "content": "calculate (1+2)+(3+4)"
+                },
+                {
+                  "role": "assistant",
+                  "content": null,
+                  "toolCalls": [
+                    {
+                      "name": "sumTool",
+                      "arguments": {
+                        "num1": 1,
+                        "num2": 2
+                      }
+                    }
+                  ]
+                },
+                {
+                  "role": "function",
+                  "content": "3.0",
+                  "name": "sumTool"
+                },
+                {
+                  "role": "assistant",
+                  "content": null,
+                  "toolCalls": [
+                    {
+                      "name": "sumTool",
+                      "arguments": {
+                        "num1": 3,
+                        "num2": 4
+                      }
+                    }
+                  ]
+                }
+              ],
+              "output": {
+                "role": "assistant",
+                "content": null,
+                "toolCalls": [
+                  {
+                    "name": "sumTool",
+                    "arguments": {
+                      "num1": 3,
+                      "num2": 4
+                    }
+                  }
+                ]
+              },
+              "startTime": "2026-07-16T01:47:06.595Z",
+              "endTime": "2026-07-16T01:47:07.499Z"
+            },
+            {
+              "history": [
+                {
+                  "role": "system",
+                  "content": "# Role  \nMath Tutor  \n\n# Instructions  \nYou are a math tutor assistant.\r\n\r\nRULES (MUST FOLLOW):\r\n\r\n* You MUST use the provided mathematical tools (add, subtract, multiply, divide) for ALL calculations, even simple ones.\r\n* You are NOT allowed to compute results mentally or inline.\r\n* If a calculation is required and a tool is available, you MUST call the tool.\r\n* If you do not call a tool when a calculation is required, the response is invalid.\r\n\r\nProvide clear, step-by-step explanations. Include the final answer at the end.\n"
+                },
+                {
+                  "role": "user",
+                  "content": "calculate (1+2)+(3+4)"
+                },
+                {
+                  "role": "assistant",
+                  "content": null,
+                  "toolCalls": [
+                    {
+                      "name": "sumTool",
+                      "arguments": {
+                        "num1": 1,
+                        "num2": 2
+                      }
+                    }
+                  ]
+                },
+                {
+                  "role": "function",
+                  "content": "3.0",
+                  "name": "sumTool"
+                },
+                {
+                  "role": "assistant",
+                  "content": null,
+                  "toolCalls": [
+                    {
+                      "name": "sumTool",
+                      "arguments": {
+                        "num1": 3,
+                        "num2": 4
+                      }
+                    }
+                  ]
+                },
+                {
+                  "role": "function",
+                  "content": "7.0",
+                  "name": "sumTool"
+                },
+                {
+                  "role": "assistant",
+                  "content": null,
+                  "toolCalls": [
+                    {
+                      "name": "sumTool",
+                      "arguments": {
+                        "num1": 3,
+                        "num2": 7
+                      }
+                    }
+                  ]
+                }
+              ],
+              "output": {
+                "role": "assistant",
+                "content": null,
+                "toolCalls": [
+                  {
+                    "name": "sumTool",
+                    "arguments": {
+                      "num1": 3,
+                      "num2": 7
+                    }
+                  }
+                ]
+              },
+              "startTime": "2026-07-16T01:47:07.504Z",
+              "endTime": "2026-07-16T01:47:08.549Z"
+            },
+            {
+              "history": [
+                {
+                  "role": "system",
+                  "content": "# Role  \nMath Tutor  \n\n# Instructions  \nYou are a math tutor assistant.\r\n\r\nRULES (MUST FOLLOW):\r\n\r\n* You MUST use the provided mathematical tools (add, subtract, multiply, divide) for ALL calculations, even simple ones.\r\n* You are NOT allowed to compute results mentally or inline.\r\n* If a calculation is required and a tool is available, you MUST call the tool.\r\n* If you do not call a tool when a calculation is required, the response is invalid.\r\n\r\nProvide clear, step-by-step explanations. Include the final answer at the end.\n"
+                },
+                {
+                  "role": "user",
+                  "content": "calculate (1+2)+(3+4)"
+                },
+                {
+                  "role": "assistant",
+                  "content": null,
+                  "toolCalls": [
+                    {
+                      "name": "sumTool",
+                      "arguments": {
+                        "num1": 1,
+                        "num2": 2
+                      }
+                    }
+                  ]
+                },
+                {
+                  "role": "function",
+                  "content": "3.0",
+                  "name": "sumTool"
+                },
+                {
+                  "role": "assistant",
+                  "content": null,
+                  "toolCalls": [
+                    {
+                      "name": "sumTool",
+                      "arguments": {
+                        "num1": 3,
+                        "num2": 4
+                      }
+                    }
+                  ]
+                },
+                {
+                  "role": "function",
+                  "content": "7.0",
+                  "name": "sumTool"
+                },
+                {
+                  "role": "assistant",
+                  "content": null,
+                  "toolCalls": [
+                    {
+                      "name": "sumTool",
+                      "arguments": {
+                        "num1": 3,
+                        "num2": 7
+                      }
+                    }
+                  ]
+                },
+                {
+                  "role": "function",
+                  "content": "10.0",
+                  "name": "sumTool"
+                }
+              ],
+              "output": {
+                "role": "assistant",
+                "content": "Let's break down the calculation step-by-step:\n\n1. First, we calculate \\(1 + 2\\):\n   \\[\n   1 + 2 = 3\n   \\]\n\n2. Next, we calculate \\(3 + 4\\):\n   \\[\n   3 + 4 = 7\n   \\]\n\n3. Finally, we add the two results together:\n   \\[\n   3 + 7 = 10\n   \\]\n\nSo, the final answer is \\(10\\).",
+                "toolCalls": null
+              },
+              "startTime": "2026-07-16T01:47:08.554Z",
+              "endTime": "2026-07-16T01:47:09.877Z"
+            }
+          ],
+          "output": {
+            "role": "assistant",
+            "content": "Let's break down the calculation step-by-step:\n\n1. First, we calculate \\(1 + 2\\):\n   \\[\n   1 + 2 = 3\n   \\]\n\n2. Next, we calculate \\(3 + 4\\):\n   \\[\n   3 + 4 = 7\n   \\]\n\n3. Finally, we add the two results together:\n   \\[\n   3 + 7 = 10\n   \\]\n\nSo, the final answer is \\(10\\).",
+            "toolCalls": null
+          },
+          "tools": [
+            {
+              "name": "sumTool",
+              "description": "Calculates the sum of two numbers ",
+              "parametersSchema": {
+                "type": "object",
+                "required": [
+                  "num1",
+                  "num2"
+                ],
+                "properties": {
+                  "num1": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "The first number"
+                  },
+                  "num2": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "The second number"
+                  }
+                }
+              }
+            },
+            {
+              "name": "subtractTool",
+              "description": "Calculates the difference of two numbers ",
+              "parametersSchema": {
+                "type": "object",
+                "required": [
+                  "num1",
+                  "num2"
+                ],
+                "properties": {
+                  "num1": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "The first number"
+                  },
+                  "num2": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "The second number"
+                  }
+                }
+              }
+            },
+            {
+              "name": "multiplyTool",
+              "description": "Calculates the product of two numbers ",
+              "parametersSchema": {
+                "type": "object",
+                "required": [
+                  "num1",
+                  "num2"
+                ],
+                "properties": {
+                  "num1": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "The first number"
+                  },
+                  "num2": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "The second number"
+                  }
+                }
+              }
+            },
+            {
+              "name": "divideTool",
+              "description": "Calculates the division of two numbers Handles division by zero If num2 is zero, returns 0 Otherwise, returns the result of the division ",
+              "parametersSchema": {
+                "type": "object",
+                "required": [
+                  "num1",
+                  "num2"
+                ],
+                "properties": {
+                  "num1": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "The dividend (numerator)"
+                  },
+                  "num2": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "The divisor (denominator)"
+                  }
+                }
+              }
+            }
+          ],
+          "toolCalls": [
+            {
+              "name": "sumTool",
+              "arguments": {
+                "num1": 3,
+                "num2": 4
+              }
+            },
+            {
+              "name": "sumTool",
+              "arguments": {
+                "num1": 3,
+                "num2": 7
+              }
+            }
+          ],
+          "startTime": "2026-07-16T01:47:04.285Z",
+          "endTime": "2026-07-16T01:47:09.982Z"
+        }
+      ],
+      "created_on": "2026-07-16T01:47:31.031Z"
     }
   ],
   "created_on": "2026-07-12T16:09:31.190Z"
