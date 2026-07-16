@@ -1,4 +1,5 @@
 import ballerina/ai;
+import ballerina/time;
 import ballerina/uuid;
 
 # The structured output of an LLM judge: a score plus the reasoning behind it.
@@ -231,6 +232,37 @@ public isolated function assertIterationEfficiency(ai:Agent targetAgent, ai:Conv
     }
 }
 
+# Checks that the agent produces every response within the given time limit.
+#
+# Accepts either a conversation thread loaded from an eval set (every trace is
+# replayed into the thread's session and its run timed) or a single user query
+# (run in a fresh, randomly generated session).
+#
+# + targetAgent - The agent under evaluation
+# + queries - The eval set conversation thread, or a single user query
+# + maxLatencySeconds - The maximum time allowed per agent run, in seconds
+# + return - `()` if every run finishes within the limit, or an error describing the first excess
+@EvalTemplate {
+    label: "Latency Performance",
+    description: "Checks that the agent responds within the configured time limit",
+    kind: RULE_BASED,
+    needsEvalset: false
+}
+public isolated function assertLatencyPerformance(ai:Agent targetAgent, ai:ConversationThread|string queries,
+        decimal maxLatencySeconds = 10) returns error? {
+    if queries is string {
+        ai:Trace actualTrace = check targetAgent.run(query = queries, sessionId = uuid:createType4AsString());
+        return checkLatency(userQuery = queries, actualTrace = actualTrace,
+                maxLatencySeconds = maxLatencySeconds);
+    }
+    foreach ai:Trace expectedTrace in queries.traces {
+        string userQuery = ai:getUserQuery(trace = expectedTrace);
+        ai:Trace actualTrace = check targetAgent.run(query = userQuery, sessionId = queries.id);
+        check checkLatency(userQuery = userQuery, actualTrace = actualTrace,
+                maxLatencySeconds = maxLatencySeconds);
+    }
+}
+
 // ***** LLM-as-judge evaluations *****
 
 # Uses an LLM judge to check that every agent response for the thread conveys the
@@ -380,6 +412,14 @@ isolated function checkProhibitedContent(string userQuery, string actualResponse
     }
     if foundStrings.length() > 0 {
         return error(string `[content-safety] query "${userQuery}": response contains ${foundStrings.length()} prohibited string(s): "${string:'join("\", \"", ...foundStrings)}"`);
+    }
+}
+
+isolated function checkLatency(string userQuery, ai:Trace actualTrace, decimal maxLatencySeconds)
+        returns error? {
+    decimal actualLatencySeconds = time:utcDiffSeconds(actualTrace.endTime, actualTrace.startTime);
+    if actualLatencySeconds > maxLatencySeconds {
+        return error(string `[latency-performance] query "${userQuery}": agent responded in ${actualLatencySeconds}s, exceeding the limit of ${maxLatencySeconds}s`);
     }
 }
 

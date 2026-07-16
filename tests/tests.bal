@@ -477,3 +477,37 @@ function libQueryIterationEfficiency(string userQuery) returns error? {
     check eval:assertIterationEfficiency(targetAgent = mathTutorAgent, queries = userQuery,
             maxIterations = maxAgentIterations);
 }
+
+// Latency performance (rule based, with eval set)
+
+configurable decimal maxResponseSeconds = 10;
+
+@test:Config {
+    groups: ["evaluations"],
+    minPassRate: 0.8,
+    dataProvider: loadLibraryEvalset
+}
+function libLatencyPerformance(ai:ConversationThread thread) returns error? {
+    check eval:assertLatencyPerformance(targetAgent = mathTutorAgent, queries = thread,
+            maxLatencySeconds = maxResponseSeconds);
+}
+
+// Latency performance (rule based, no eval set)
+
+configurable map<[string]> libraryLatencyQueries = {
+    "test": ["whats 1+1"]
+};
+
+isolated function loadLibraryLatencyQueries() returns map<[string]>|error {
+    return libraryLatencyQueries;
+}
+
+@test:Config {
+    groups: ["evaluations"],
+    minPassRate: 0.8,
+    dataProvider: loadLibraryLatencyQueries
+}
+function libQueryLatencyPerformance(string userQuery) returns error? {
+    check eval:assertLatencyPerformance(targetAgent = mathTutorAgent, queries = userQuery,
+            maxLatencySeconds = maxResponseSeconds);
+}
