@@ -2,15 +2,6 @@ import ballerina/ai;
 import ballerina/time;
 import ballerina/uuid;
 
-# The structured output of an LLM judge: a score plus the reasoning behind it.
-# The reasoning is surfaced only in failure errors; passing evaluations stay silent.
-type JudgeVerdict record {|
-    # The score assigned by the judge, in the range [0.0, 1.0]
-    float evalScore;
-    # A brief justification for the assigned score
-    string judgeReasoning;
-|};
-
 // ***** Rule-based evaluations *****
 
 # Checks that agent response lengths fall within the given bounds (inclusive).
@@ -232,6 +223,59 @@ public isolated function assertIterationEfficiency(ai:Agent targetAgent, ai:Conv
     }
 }
 
+# Checks that the required strings all appear in the agent's output.
+#
+# Accepts either a conversation thread loaded from an eval set or a single user
+# query. For a thread, every trace is replayed into the thread's session and the
+# check runs against the combined output of the whole thread: each required
+# string must appear in at least one response, otherwise the thread fails. For
+# a single query, the one response must contain every required string.
+#
+# An empty required list is treated as a configuration error and fails.
+#
+# + targetAgent - The agent under evaluation
+# + queries - The eval set conversation thread, or a single user query
+# + requiredStrings - The strings that must all appear in the agent output
+# + caseSensitive - Whether the matching is case-sensitive
+# + return - `()` if every required string is found, or an error listing the missing ones
+@EvalTemplate {
+    label: "Content Coverage",
+    description: "Checks that all required strings appear in the agent output",
+    kind: RULE_BASED,
+    needsEvalset: false
+}
+public isolated function assertContentCoverage(ai:Agent targetAgent, ai:ConversationThread|string queries,
+        string[] requiredStrings, boolean caseSensitive = false) returns error? {
+    if requiredStrings.length() == 0 {
+        return error("[content-coverage] no required strings configured; add at least one required string");
+    }
+    string combinedResponses;
+    if queries is string {
+        combinedResponses = check getAgentResponse(targetAgent = targetAgent, userQuery = queries,
+                sessionId = uuid:createType4AsString());
+    } else {
+        string[] threadResponses = [];
+        foreach ai:Trace expectedTrace in queries.traces {
+            string userQuery = ai:getUserQuery(trace = expectedTrace);
+            string actualResponse = check getAgentResponse(targetAgent = targetAgent, userQuery = userQuery,
+                    sessionId = queries.id);
+            threadResponses.push(actualResponse);
+        }
+        combinedResponses = string:'join("\n", ...threadResponses);
+    }
+    string compareResponses = caseSensitive ? combinedResponses : combinedResponses.toLowerAscii();
+    string[] missingStrings = [];
+    foreach string requiredString in requiredStrings {
+        string compareRequired = caseSensitive ? requiredString : requiredString.toLowerAscii();
+        if !compareResponses.includes(compareRequired) {
+            missingStrings.push(requiredString);
+        }
+    }
+    if missingStrings.length() > 0 {
+        return error(string `[content-coverage] ${missingStrings.length()}/${requiredStrings.length()} required string(s) missing from the agent output: "${string:'join("\", \"", ...missingStrings)}"`);
+    }
+}
+
 # Checks that the agent produces every response within the given time limit.
 #
 # Accepts either a conversation thread loaded from an eval set (every trace is
@@ -263,115 +307,6 @@ public isolated function assertLatencyPerformance(ai:Agent targetAgent, ai:Conve
     }
 }
 
-// ***** LLM-as-judge evaluations *****
-
-# Uses an LLM judge to check that every agent response for the thread conveys the
-# same meaning as the reference response recorded in the eval set.
-#
-# + targetAgent - The agent under evaluation
-# + thread - The conversation thread loaded from an eval set
-# + judgeModel - The model provider used as the LLM judge
-# + judgeScoreThreshold - The minimum judge score (in [0.0, 1.0]) required to pass
-# + return - `()` if every trace passes, or an error describing the first failure
-@EvalTemplate {
-    label: "Semantic Similarity",
-    description: "Uses an LLM judge to compare each agent response against the expected response in the eval set",
-    kind: LLM_JUDGE,
-    needsEvalset: true
-}
-public isolated function evaluateSemanticSimilarity(ai:Agent targetAgent, ai:ConversationThread thread,
-        ai:ModelProvider judgeModel, float judgeScoreThreshold = 0.8) returns error? {
-    foreach ai:Trace expectedTrace in thread.traces {
-        string userQuery = ai:getUserQuery(trace = expectedTrace);
-        ai:ChatAssistantMessage expectedOutput = check expectedTrace.output;
-        ai:Trace actualTrace = check targetAgent.run(query = userQuery, sessionId = thread.id);
-        ai:ChatAssistantMessage actualOutput = check actualTrace.output;
-        JudgeVerdict judgeVerdict = check judgeModel->generate(`You are an expert evaluator. Your sole criterion is SEMANTIC SIMILARITY: does the actual response convey the same meaning as the expected response?
-
-        User Query: ${userQuery}
-        Actual Response: ${actualOutput.content.toString()}
-        Expected Response: ${expectedOutput.content.toString()}
-        Evaluation Steps:
-        1. Identify the key facts, conclusions, and meaning in the expected response.
-        2. Identify the same elements in the actual response.
-        3. Compare for semantic equivalence: focus on MEANING, not exact wording. Paraphrases and synonymous expressions count as matches.
-        4. Identify any meaningful factual differences that change the answer.
-
-        Do NOT penalize differences in wording, formatting, or phrasing. Only deduct for genuinely different content or meaning.
-
-        Scoring Rubric:
-        0.0  = Completely different meaning; the actual response answers a different question or provides contradictory information
-        0.25 = Some surface similarity but the core answer or key facts differ
-        0.5  = Partially overlapping meaning; some key facts match but others differ
-        0.75 = Mostly equivalent; only minor factual nuances differ
-        1.0  = Semantically equivalent: same meaning, same key facts, even if worded differently
-
-        Along with the score, provide a brief reasoning that justifies it, citing the specific similarities or differences you found.`);
-        check checkScore(metricName = "semantic-similarity", userQuery = userQuery,
-                judgeVerdict = judgeVerdict, passingScore = judgeScoreThreshold);
-    }
-}
-
-# Uses an LLM judge to check that the factual information in agent responses is
-# correct and reliable.
-#
-# Accepts either a conversation thread loaded from an eval set (every trace is
-# replayed into the thread's session and judged) or a single user query (run in
-# a fresh, randomly generated session with no leftover memory).
-#
-# + targetAgent - The agent under evaluation
-# + queries - The eval set conversation thread, or a single user query
-# + judgeModel - The model provider used as the LLM judge
-# + judgeScoreThreshold - The minimum judge score (in [0.0, 1.0]) required to pass
-# + return - `()` if every judged response passes, or an error describing the first failure
-@EvalTemplate {
-    label: "Output Accuracy",
-    description: "Uses an LLM judge to check the factual correctness of agent responses",
-    kind: LLM_JUDGE,
-    needsEvalset: false
-}
-public isolated function evaluateOutputAccuracy(ai:Agent targetAgent, ai:ConversationThread|string queries,
-        ai:ModelProvider judgeModel, float judgeScoreThreshold = 0.8) returns error? {
-    if queries is string {
-        return checkQueryAccuracy(targetAgent = targetAgent, userQuery = queries, judgeModel = judgeModel,
-                judgeScoreThreshold = judgeScoreThreshold, sessionId = uuid:createType4AsString());
-    }
-    foreach ai:Trace expectedTrace in queries.traces {
-        string userQuery = ai:getUserQuery(trace = expectedTrace);
-        check checkQueryAccuracy(targetAgent = targetAgent, userQuery = userQuery, judgeModel = judgeModel,
-                judgeScoreThreshold = judgeScoreThreshold, sessionId = queries.id);
-    }
-}
-
-isolated function checkQueryAccuracy(ai:Agent targetAgent, string userQuery, ai:ModelProvider judgeModel,
-        float judgeScoreThreshold, string sessionId) returns error? {
-    ai:Trace actualTrace = check targetAgent.run(query = userQuery, sessionId = sessionId);
-    ai:ChatAssistantMessage actualOutput = check actualTrace.output;
-    JudgeVerdict judgeVerdict = check judgeModel->generate(`You are an expert evaluator. Your sole criterion is ACCURACY: is the factual information in the response correct and reliable?
-
-        User Query: ${userQuery}
-        Agent Response: ${actualOutput.content.toString()}
-
-        Evaluation Steps:
-        1. Identify the factual claims, technical statements, and information presented in the response.
-        2. Assess whether these facts are correct based on your knowledge. Flag any statements that are demonstrably wrong, misleading, or technically imprecise.
-        3. Check for subtle inaccuracies: correct general direction but wrong specifics, outdated information presented as current, or oversimplifications that mislead.
-        4. Assess the overall reliability of the information provided.
-
-        Do NOT penalize the response for information you cannot verify. Only flag claims you are confident are incorrect or misleading.
-
-        Scoring Rubric:
-        0.0  = Contains significant factual errors that would mislead the user
-        0.25 = Several inaccuracies or one major factual error that undermines trust
-        0.5  = Mostly accurate but with noticeable errors or misleading simplifications
-        0.75 = Accurate with only minor imprecisions that do not materially mislead
-        1.0  = Fully accurate; all factual claims are correct and reliably stated
-
-        Along with the score, provide a brief reasoning that justifies it, citing the specific claims you checked.`);
-    check checkScore(metricName = "accuracy", userQuery = userQuery,
-            judgeVerdict = judgeVerdict, passingScore = judgeScoreThreshold);
-}
-
 // ***** Shared helpers *****
 
 isolated function getAgentResponse(ai:Agent targetAgent, string userQuery, string sessionId)
@@ -390,13 +325,6 @@ isolated function checkLength(string userQuery, string actualResponse, int minLe
     int responseLength = actualResponse.length();
     if responseLength < minLength || responseLength > maxLength {
         return error(string `[length-compliance] query "${userQuery}": response length ${responseLength} is outside the range [${minLength}, ${maxLength}]`);
-    }
-}
-
-isolated function checkScore(string metricName, string userQuery, JudgeVerdict judgeVerdict,
-        float passingScore) returns error? {
-    if judgeVerdict.evalScore < passingScore {
-        return error(string `[${metricName}] query "${userQuery}": judge score ${judgeVerdict.evalScore} is below the passing score ${passingScore}. Judge reasoning: ${judgeVerdict.judgeReasoning}`);
     }
 }
 
