@@ -4,11 +4,11 @@ import ballerina/ai;
 import ballerina/test;
 import ballerinax/ai.anthropic;
 
-// ***************Evaluations using the MathTutor.eval library****************
+// ***************Evaluations using the eval library****************
 //
 // Each block below is what the low-code interface would generate for a default
 // evaluation template using the eval library. Every template collapses to a
-// single call: run the agent, score it, and fail with a descriptive error
+// single call: run the agent, score it, and pass it or fail it with a descriptive error
 // (a failure feeds the minPassRate calculation).
 //
 // When the module is published as ballerina/ai.eval, only the import changes.

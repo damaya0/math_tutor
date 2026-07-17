@@ -15,10 +15,10 @@ type JudgeVerdict record {|
     string judgeReasoning;
 |};
 
-isolated function checkScore(string metricName, string userQuery, string actualResponse,
+isolated function checkScore(string metricName, string userQuery,
         JudgeVerdict judgeVerdict, float passingScore) returns error? {
     if judgeVerdict.evalScore < passingScore {
-        return error(string `[${metricName}] query "${userQuery}": judge score ${judgeVerdict.evalScore} is below the passing score ${passingScore}. Judge reasoning: ${judgeVerdict.judgeReasoning}."`, detail = actualResponse);
+        return error(string `[${metricName}] query "${userQuery}": judge score ${judgeVerdict.evalScore} is below the passing score ${passingScore}. Judge reasoning: ${judgeVerdict.judgeReasoning}."`);
     }
 }
 
@@ -32,16 +32,14 @@ isolated function runTraceJudge(ai:Agent targetAgent, ai:ConversationThread|stri
     if queries is string {
         ai:Trace actualTrace = check targetAgent.run(query = queries, sessionId = uuid:createType4AsString());
         JudgeVerdict judgeVerdict = check scoreTrace(queries, actualTrace);
-        return checkScore(metricName = metricName, userQuery = queries,
-                actualResponse = check getResponseText(trace = actualTrace), judgeVerdict = judgeVerdict,
+        return checkScore(metricName = metricName, userQuery = queries,judgeVerdict = judgeVerdict,
                 passingScore = judgeScoreThreshold);
     }
     foreach ai:Trace expectedTrace in queries.traces {
         string userQuery = ai:getUserQuery(trace = expectedTrace);
         ai:Trace actualTrace = check targetAgent.run(query = userQuery, sessionId = queries.id);
         JudgeVerdict judgeVerdict = check scoreTrace(userQuery, actualTrace);
-        check checkScore(metricName = metricName, userQuery = userQuery,
-                actualResponse = check getResponseText(trace = actualTrace), judgeVerdict = judgeVerdict,
+        check checkScore(metricName = metricName, userQuery = userQuery,judgeVerdict = judgeVerdict,
                 passingScore = judgeScoreThreshold);
     }
 }
@@ -90,8 +88,7 @@ public isolated function evaluateSemanticSimilarity(ai:Agent targetAgent, ai:Con
         1.0  = Semantically equivalent: same meaning, same key facts, even if worded differently
 
         Along with the score, provide a brief reasoning that justifies it, citing the specific similarities or differences you found.`);
-        check checkScore(metricName = "semantic-similarity", userQuery = userQuery,
-                actualResponse = actualOutput.content.toString(), judgeVerdict = judgeVerdict,
+        check checkScore(metricName = "semantic-similarity", userQuery = userQuery,judgeVerdict = judgeVerdict,
                 passingScore = judgeScoreThreshold);
     }
 }
@@ -153,8 +150,7 @@ isolated function checkQueryAccuracy(ai:Agent targetAgent, string userQuery, ai:
         - Information you cannot verify
 
         Along with the score, provide a brief reasoning listing the claims you checked and their TRUE/FALSE marks.`);
-    check checkScore(metricName = "accuracy", userQuery = userQuery,
-            actualResponse = actualOutput.content.toString(), judgeVerdict = judgeVerdict,
+    check checkScore(metricName = "accuracy", userQuery = userQuery,judgeVerdict = judgeVerdict,
             passingScore = judgeScoreThreshold);
 }
 
