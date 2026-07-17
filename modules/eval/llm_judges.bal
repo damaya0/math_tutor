@@ -113,25 +113,14 @@ public isolated function evaluateSemanticSimilarity(ai:Agent targetAgent, ai:Con
 }
 public isolated function evaluateOutputAccuracy(ai:Agent targetAgent, ai:ConversationThread|string queries,
         ai:ModelProvider judgeModel, float judgeScoreThreshold = 0.8) returns error? {
-    if queries is string {
-        return checkQueryAccuracy(targetAgent = targetAgent, userQuery = queries, judgeModel = judgeModel,
-                judgeScoreThreshold = judgeScoreThreshold, sessionId = uuid:createType4AsString());
-    }
-    foreach ai:Trace expectedTrace in queries.traces {
-        string userQuery = ai:getUserQuery(trace = expectedTrace);
-        check checkQueryAccuracy(targetAgent = targetAgent, userQuery = userQuery, judgeModel = judgeModel,
-                judgeScoreThreshold = judgeScoreThreshold, sessionId = queries.id);
-    }
-}
-
-isolated function checkQueryAccuracy(ai:Agent targetAgent, string userQuery, ai:ModelProvider judgeModel,
-        float judgeScoreThreshold, string sessionId) returns error? {
-    ai:Trace actualTrace = check targetAgent.run(query = userQuery, sessionId = sessionId);
-    ai:ChatAssistantMessage actualOutput = check actualTrace.output;
-    JudgeVerdict judgeVerdict = check judgeModel->generate(`You are an expert evaluator. Your sole criterion is ACCURACY: is the factual information in the response correct and reliable?
+    return runTraceJudge(targetAgent = targetAgent, queries = queries, metricName = "accuracy",
+            judgeScoreThreshold = judgeScoreThreshold,
+            scoreTrace = isolated function(string userQuery, ai:Trace actualTrace) returns JudgeVerdict|error {
+                string actualResponse = check getResponseText(trace = actualTrace);
+                return judgeModel->generate(`You are an expert evaluator. Your sole criterion is ACCURACY: is the factual information in the response correct and reliable?
 
         User Query: ${userQuery}
-        Agent Response: ${actualOutput.content.toString()}
+        Agent Response: ${actualResponse}
 
         Follow this decision procedure exactly:
         1. List every factual claim the response makes: each stated calculation result, each number, each statement of fact.
@@ -150,8 +139,7 @@ isolated function checkQueryAccuracy(ai:Agent targetAgent, string userQuery, ai:
         - Information you cannot verify
 
         Along with the score, provide a brief reasoning listing the claims you checked and their TRUE/FALSE marks.`);
-    check checkScore(metricName = "accuracy", userQuery = userQuery,judgeVerdict = judgeVerdict,
-            passingScore = judgeScoreThreshold);
+            });
 }
 
 // ***** Response-quality judges *****
