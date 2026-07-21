@@ -1,7 +1,7 @@
 import ballerina/ai;
 import ballerina/uuid;
 
-// LLM-as-judge evaluators. Each judges the agent's ACTUAL run (reference-free),
+// LLM-as-judge evaluators. Each judges the agent's ACTUAL run,
 // so every evaluator accepts either an eval set conversation thread or a single
 // user query. All judges return a JudgeVerdict; the reasoning surfaces only in
 // failure errors.
